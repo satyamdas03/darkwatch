@@ -8,7 +8,8 @@ __pycache__/
 .ruff_cache/
 *.log
 .ipynb_checkpoints/
-# Large downloaded / generated data
+# Large downloaded / generated data (keep broad + specific for clarity)
+data/
 data/raw/s1/*.zip
 data/raw/s1/**/*.SAFE
 data/raw/s1/*.json
