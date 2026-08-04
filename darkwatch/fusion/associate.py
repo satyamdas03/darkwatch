@@ -165,15 +165,21 @@ def associate_contact(
         reasoning.append("No AIS track within gate radius.")
 
     # Detection confidence feeds into real-vessel probability.
-    p_real_vessel = contact.confidence
+    # Low-confidence detections keep some artifact probability; high-confidence
+    # detections are treated as real vessels unless AIS geometry contradicts it.
+    p_real_vessel = float(contact.confidence)
     p_artifact = (1.0 - p_real_vessel) * DEFAULT_ARTIFACT_PRIOR
 
-    # Remaining real-vessel mass is split between clear and dark.
+    # Remaining real-vessel mass is split between clear and dark according to
+    # the AIS evidence.
     real_mass = max(0.0, 1.0 - p_artifact)
-    # Dark probability = real vessels not explained by AIS.
-    p_dark = real_mass * (1.0 - p_clear) * (1.0 - DEFAULT_ARTIFACT_PRIOR)
-    # Review = leftover uncertainty where no single explanation dominates.
-    p_review = max(0.0, 1.0 - (p_artifact + p_clear + p_dark))
+    p_clear = real_mass * p_clear
+    p_dark = real_mass * (1.0 - p_clear)
+
+    # Review probability is intentionally zero in this closed decomposition;
+    # the REVIEW verdict is produced when no component is strong enough to
+    # dominate (see ContactVerdict.verdict).
+    p_review = 0.0
 
     if best_association:
         reasoning.append(
