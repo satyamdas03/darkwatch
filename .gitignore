@@ -14,6 +14,8 @@ data/raw/s1/*.zip
 data/raw/s1/**/*.SAFE
 data/raw/s1/*.json
 data/external/ssdd/
+data/external/ais/
+data/external/ais_extracted/
 data/external/*.zip
 data/external/*.exe
 data/external/*.msi
@@ -22,5 +24,9 @@ data/processed/*/
 # Models and base weights
 models/
 yolov8n.pt
+yolo26n.pt
+*.pt
 # Debug outputs
 land_debug.png
+notebooks/temp_*.png
+notebooks/tile_*.png

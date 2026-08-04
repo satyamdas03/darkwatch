@@ -14,9 +14,9 @@
 | **Tagline** | A radar contact with no transponder is either noise, a rig, a mismatch — or a ship that chose to disappear. Darkwatch decides which, and says how sure it is. |
 | **Goal** | Build a maritime surveillance system that detects vessels that have deliberately switched off AIS, by fusing free Sentinel-1 SAR imagery with AIS broadcasts, and produces calibrated, auditable dark-vessel verdicts. |
 | **Mode** | Impact-first, funding-agnostic, single-consumer-GPU research/engineering build. |
-| **Status** | Phase 1 — SAR Ingestion & Prep COMPLETE; starting Phase 2 (vessel detection) |
+| **Status** | Phase 2 — Vessel Detection COMPLETE (with known domain-gap limitations); Phase 3 Fusion & Attribution in progress |
 | **Start Date** | 2026-08-04 |
-| **Last Updated** | 2026-08-04 (git extraction + initial commit) |
+| **Last Updated** | 2026-08-04 (detector trained + inference fix + Phase 3 AIS download started) |
 | **Current Branch** | main |
 | **Git Remote** | Local only — create `satyamdas03/darkwatch` on GitHub and push when ready |
 | **Lead Engineer** | Bull (Claude Code agent) |
@@ -163,7 +163,10 @@ darkwatch/
   - `scripts/detect_tiles.py` — CLI wrapper for inference on prepared tiles.
 - [x] SSDD converted to YOLO format: 1,160 images / 1,160 label files (train + val) at `data/processed/ssdd_yolo/`.
 - [x] YOLOv8n base weights downloaded to repo root (`yolov8n.pt`).
-- [ ] **Detector training was interrupted** by the laptop crash at 2026-08-04 ~12:26. `models/detector_runs/darkwatch_yolov8n_ssdd_v1/args.yaml` exists but `weights/` is empty. Training must be re-run.
+- [x] **Detector training completed** after crash: `models/detector_runs/darkwatch_yolov8n_ssdd/weights/best.pt` (30 epochs, YOLOv8n on SSDD, mAP50 0.977).
+- [x] **Domain-gap fix implemented**: `darkwatch/detect/detector.py` now converts float dB GeoTIFF tiles to uint8 RGB via configurable contrast stretch before YOLO inference; `scripts/detect_tiles.py` exposes `--db-lo`, `--db-hi`, `--no-stretch`.
+- [x] **Inference run on 2024-07-11 scene**: 2 detections across 12 tiles, corresponding to **1 unique physical object** split across adjacent tile boundary (lon -120.7308, lat 34.6105); confidences 0.37 and 0.50.
+- [x] **Key finding:** SSDD-trained YOLOv8n has low recall on real Sentinel-1 GRD — a known cross-domain gap. The preprocessing fix recovered contacts but count is far below expected channel traffic. Detector improvement is a Phase 2 follow-up, not a Phase 3 blocker.
 - [x] Unit tests pass (`pytest tests/ -q` → 4 passed).
 
 ### 6.1 Test Theater — Final Choice
@@ -199,8 +202,8 @@ darkwatch/
 |---|---|---|---|---|---|
 | 0 | **Recon & first light** | Get real SAR onto the screen; pick test theater | ✅ Complete | Bull | Copernicus + NOAA verified; first scene calibrated and viewed |
 | 1 | **SAR Ingestion & Prep (S1)** | Scenes → analysis-ready tiles, automatically | ✅ Complete | Bull | `prep_s1.py`; land-mask → tile pipeline validated on ocean scene |
-| 2 | **Vessel Detection (S2)** | Scene in, clean contacts out | 🚧 In Progress | Bull | Code complete; training interrupted by crash — must re-run |
-| 3 | **Fusion & Attribution (S3)** ★ | Calibrated dark-vessel attribution | ⏳ Pending | Bull | **Make-or-break phase** |
+| 2 | **Vessel Detection (S2)** | Scene in, clean contacts out | ✅ Complete (baseline) | Bull | YOLOv8n trained; dB→uint8 preprocessing fixes inference; low recall due to SSDD→GRD domain gap — improvement tracked as follow-up |
+| 3 | **Fusion & Attribution (S3)** ★ | Calibrated dark-vessel attribution | 🚧 In Progress | Bull | **Make-or-break phase**; NOAA AIS daily zip downloading |
 | 4 | **Behavior & Intent (S4)** | Ranked alerts with context | ⏳ Pending | Bull | Use GFW + public zone data |
 | 5 | **Evidence Layer (S5)** | Auditable dossiers + validation | ⏳ Pending | Bull | Write up method |
 
@@ -256,7 +259,9 @@ darkwatch/
 | 2026-08-04 | ✅ RESOLVED — Land/coastline mask using Natural Earth `ne_50m_land` polygons | — | Bull |
 | 2026-08-04 | ✅ RESOLVED — Scene selection: score passes by open-water fraction to avoid land-only acquisitions | — | Bull |
 | 2026-08-04 | Which open SAR ship detection dataset has the most permissive license? | Medium — blocks S2 | Bull |
-| 2026-08-04 | Detector training run was interrupted by crash; `weights/` directory is empty | High — blocks S2 inference | Bull |
+| 2026-08-04 | ✅ RESOLVED — Detector training completed; weights at `models/detector_runs/darkwatch_yolov8n_ssdd/weights/best.pt` | — | Bull |
+| 2026-08-04 | ⚠️ WATCH — SSDD→GRD domain gap yields very low recall on real tiles (1 unique contact) | Medium — limits S2 utility; not a Phase 3 blocker | Bull |
+| 2026-08-04 | 🚧 IN PROGRESS — AIS data pull for the 2024-07-11 Santa Barbara Channel window (`AIS_2024_07_11.zip` downloading) | Medium — blocks S3 fusion validation | Bull |
 | 2026-08-04 | ✅ RESOLVED — Darkwatch extracted into its own git repository at `C:/Users/point/projects/darkwatch` | — | Bull |
 | 2026-08-04 | Create/push `satyamdas03/darkwatch` GitHub repository | Low — local repo is safe; remote needed for backup/collaboration | Bull |
 | 2026-08-04 | AIS data pull for the 2024-07-11 Santa Barbara Channel window | Medium — blocks S3 fusion validation | Bull |
@@ -328,6 +333,19 @@ darkwatch/
 - **Result:** Darkwatch is now an independent repository. Parent repo ignores it. No remote set yet — GitHub repo creation/push is pending user approval.
 - **Files committed to darkwatch:** `DOSSIER.md`, `README.md`, `darkwatch-architecture.html`, `darkwatch/` package, `scripts/`, `tests/`, `pyproject.toml`, `notebooks/` validation PNGs.
 - **Files excluded:** `.env`, `data/`, `models/`, `yolov8n.pt`, `__pycache__/`.
+
+### 2026-08-04 — Session #1 (continued): Phase 2 COMPLETE, inference domain-gap fixed, Phase 3 started
+- Re-ran `python scripts/train_detector.py --epochs 30 --batch 4 --imgsz 640 --device 0` to completion after the laptop crash.
+  - Run folder: `models/detector_runs/darkwatch_yolov8n_ssdd/` (not `_v1`); final `best.pt` present.
+  - Validation mAP50 reached **0.977** at epoch 30.
+- First inference run with `scripts/detect_tiles.py` on the July 11 tiles returned **0 contacts**.
+- **Root cause:** prepared tiles are `float32` dB GeoTIFFs; the SSDD-trained YOLO model expects `uint8` RGB images.
+- **Fix:** added `_db_to_uint8()` helper and configurable dB contrast stretch inside `darkwatch/detect/detector.py`; `VesselDetector.predict()` now preprocesses GeoTIFFs before passing arrays to YOLO; `scripts/detect_tiles.py` exposes `--db-lo` / `--db-hi` / `--no-stretch`.
+- Re-ran inference: **2 detections across 12 tiles**, corresponding to **1 unique physical vessel** straddling the boundary between two adjacent row tiles (center ~-120.7308, 34.6105; confidences 0.37 and 0.50).
+- **Key finding / risk:** SSDD-trained YOLOv8n has very low recall on real Sentinel-1 GRD. This is a cross-domain generalization problem, not a calibration bug. Options for later: fine-tune on LS-SSDD-v1.0 / HRSID, add real GRD chips to training, use a larger YOLO backbone, or implement a CFAR classical fallback.
+- Decision: accept the current detections as a working baseline and move to **Phase 3 Fusion & Attribution** rather than endlessly tuning S2.
+- Started downloading NOAA Marine Cadastre daily AIS broadcast CSV for 2024-07-11 (`AIS_2024_07_11.zip`, ~358 MB) from `https://coast.noaa.gov/htdata/CMSP/AISDataHandler/2024/`; download in progress.
+- **Next action:** filter the daily AIS CSV to the Santa Barbara Channel theater bbox and ±time window around the SAR acquisition; build the probabilistic SAR-to-AIS association module; produce the first dark-vessel attribution dossier.
 
 ---
 

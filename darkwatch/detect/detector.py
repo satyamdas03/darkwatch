@@ -8,7 +8,6 @@ model path or a standard Ultralytics hub name.
 from __future__ import annotations
 
 import json
-import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
@@ -20,6 +19,33 @@ from rasterio.control import GroundControlPoint
 from scipy.interpolate import LinearNDInterpolator
 
 from .contact import Contact
+
+
+def _db_to_uint8(arr: np.ndarray, db_range: tuple[float, float] = (-25.0, -5.0)) -> np.ndarray:
+    """Convert a SAR dB image to an 8-bit RGB array suitable for SSDD-trained YOLO.
+
+    The default stretch maps -25 dB -> 0 and -5 dB -> 255. NaN/Inf values are
+    clamped to the range limits before stretching.
+    """
+    lo, hi = db_range
+    arr = np.nan_to_num(arr, nan=lo, posinf=hi, neginf=lo)
+    stretched = np.clip((arr - lo) / (hi - lo), 0.0, 1.0)
+    uint8 = (stretched * 255.0).astype(np.uint8)
+
+    if uint8.ndim == 2:
+        # Grayscale -> RGB by duplicating the single band.
+        uint8 = np.stack([uint8, uint8, uint8], axis=-1)
+    elif uint8.ndim == 3:
+        # Channel-first (C, H, W) as returned by rasterio.read() with indexes=None.
+        if uint8.shape[0] == 1:
+            uint8 = np.stack([uint8[0], uint8[0], uint8[0]], axis=-1)
+        elif uint8.shape[0] == 3:
+            uint8 = np.transpose(uint8, (1, 2, 0))
+        elif uint8.shape[-1] == 1:
+            uint8 = np.stack([uint8[..., 0], uint8[..., 0], uint8[..., 0]], axis=-1)
+        # If shape[-1] == 3 we already have RGB.
+
+    return uint8
 
 
 class VesselDetector:
@@ -70,13 +96,19 @@ class VesselDetector:
 
     def predict(
         self,
-        image_paths: list[Path | str],
+        image_paths: list[Path | str | np.ndarray],
         conf: float = 0.25,
         iou: float = 0.45,
         imgsz: int = 640,
+        db_range: tuple[float, float] | None = (-25.0, -5.0),
         **kwargs,
     ) -> list[list[dict]]:
-        """Run inference on a list of image paths.
+        """Run inference on a list of image paths or arrays.
+
+        GeoTIFF paths are loaded with rasterio and converted from float dB to
+        uint8 RGB using ``db_range``. Existing uint8 arrays are passed through
+        (duplicated to 3 channels if grayscale). Plain image paths are passed to
+        YOLO unchanged.
 
         Returns a list (per image) of detection dicts with keys:
           - image_id / tile_id
@@ -84,8 +116,31 @@ class VesselDetector:
           - confidence
           - class_id
         """
+        sources: list[np.ndarray | str] = []
+        for src in image_paths:
+            if isinstance(src, np.ndarray):
+                arr = src
+                if arr.dtype != np.uint8 and db_range is not None:
+                    arr = _db_to_uint8(arr, db_range)
+                elif arr.ndim == 2:
+                    arr = np.stack([arr, arr, arr], axis=-1)
+                sources.append(arr)
+                continue
+
+            path = Path(src)
+            if path.suffix.lower() in {".tif", ".tiff"}:
+                with rasterio.open(path) as ds:
+                    arr = ds.read(1)
+                if db_range is not None:
+                    arr = _db_to_uint8(arr, db_range)
+                elif arr.ndim == 2:
+                    arr = np.stack([arr, arr, arr], axis=-1)
+                sources.append(arr)
+            else:
+                sources.append(str(path))
+
         results = self.model.predict(
-            source=[str(p) for p in image_paths],
+            source=sources,
             conf=conf,
             iou=iou,
             imgsz=imgsz,
@@ -172,6 +227,7 @@ def detect_tiles(
     conf: float = 0.25,
     iou: float = 0.45,
     imgsz: int = 640,
+    db_range: tuple[float, float] | None = (-25.0, -5.0),
 ) -> list[Contact]:
     """Run detector on all tiles in a Darkwatch manifest and geo-locate contacts.
 
@@ -180,6 +236,8 @@ def detect_tiles(
         tile_manifest_path: path to manifest.json from `prep_scene`.
         output_dir: directory for detection outputs (images, labels, contacts.json).
         conf, iou, imgsz: inference parameters.
+        db_range: dB contrast-stretch range for float GeoTIFF tiles; set to
+            ``None`` to skip stretching.
 
     Returns:
         List of Contact objects, one per detection.
@@ -201,6 +259,7 @@ def detect_tiles(
         conf=conf,
         iou=iou,
         imgsz=imgsz,
+        db_range=db_range,
     )
 
     contacts: list[Contact] = []
