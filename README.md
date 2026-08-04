@@ -23,8 +23,24 @@ python scripts/prep_s1.py "data/raw/s1/S1A_...SAFE" --output-dir data/processed/
 python scripts/prepare_ssdd.py
 python scripts/train_detector.py --epochs 30 --batch 4
 
-# Detect vessels in tiles
-python scripts/detect_tiles.py --manifest data/processed/s1a_YYYYMMDD_channel/manifest.json --output-dir data/processed/detections_YYYYMMDD
+# Detect vessels in tiles (dB -> uint8 contrast stretch is required for the SSDD-trained YOLO model)
+python scripts/detect_tiles.py \
+  --manifest data/processed/s1a_YYYYMMDD_channel/manifest.json \
+  --model models/detector_runs/darkwatch_yolov8n_ssdd/weights/best.pt \
+  --db-lo -25 --db-hi -5 \
+  --output-dir data/processed/detections_YYYYMMDD
+
+# Fetch NOAA Marine Cadastre AIS for the acquisition date
+python scripts/fetch_ais.py --date 2024-07-11 \
+  --bbox "-120.8,34.3,-119.8,34.7" \
+  --center-time "2024-07-11T14:09:10Z" \
+  --time-window-minutes 60
+
+# Fuse SAR contacts with AIS tracks to produce dark-vessel verdicts
+python scripts/fuse_contacts.py \
+  --contacts data/processed/detections_YYYYMMDD/contacts.json \
+  --ais data/external/ais/ais_2024-07-11_clipped.csv \
+  --output-dir data/processed/fusion_YYYYMMDD
 ```
 
 ## Architecture

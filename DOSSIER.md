@@ -167,7 +167,15 @@ darkwatch/
 - [x] **Domain-gap fix implemented**: `darkwatch/detect/detector.py` now converts float dB GeoTIFF tiles to uint8 RGB via configurable contrast stretch before YOLO inference; `scripts/detect_tiles.py` exposes `--db-lo`, `--db-hi`, `--no-stretch`.
 - [x] **Inference run on 2024-07-11 scene**: 2 detections across 12 tiles, corresponding to **1 unique physical object** split across adjacent tile boundary (lon -120.7308, lat 34.6105); confidences 0.37 and 0.50.
 - [x] **Key finding:** SSDD-trained YOLOv8n has low recall on real Sentinel-1 GRD — a known cross-domain gap. The preprocessing fix recovered contacts but count is far below expected channel traffic. Detector improvement is a Phase 2 follow-up, not a Phase 3 blocker.
-- [x] Unit tests pass (`pytest tests/ -q` → 4 passed).
+- [x] **Phase 3 Fusion & Attribution scaffold implemented** while NOAA AIS daily zip downloads:
+  - `darkwatch/fusion/ais.py` — `AISTrack` dataclass with interpolation and GPS uncertainty model.
+  - `darkwatch/fusion/associate.py` — `ContactVerdict`, `TrackAssociation`, `associate_contact()` / `associate_all_contacts()`; produces CLEAR / DARK / ARTIFACT / REVIEW verdicts with component probabilities.
+  - `darkwatch/fusion/verdict.py` — `Verdict` enum.
+  - `darkwatch/fusion/__init__.py` — public exports wired.
+  - `scripts/fetch_ais.py` — download NOAA daily AIS zip, unzip, filter to bbox/time window, write clipped CSV.
+  - `scripts/fuse_contacts.py` — load contacts + AIS, run association, write `verdicts.json` with summary counts.
+  - `tests/test_fusion.py` — unit tests for AIS CSV filtering, track interpolation, CLEAR/DARK verdicts, probability normalization.
+- [x] Unit tests pass (`pytest tests/ -q` → 10 passed).
 
 ### 6.1 Test Theater — Final Choice
 
@@ -347,6 +355,21 @@ darkwatch/
 - Started downloading NOAA Marine Cadastre daily AIS broadcast CSV for 2024-07-11 (`AIS_2024_07_11.zip`, ~358 MB) from `https://coast.noaa.gov/htdata/CMSP/AISDataHandler/2024/`; download in progress.
 - **Next action:** filter the daily AIS CSV to the Santa Barbara Channel theater bbox and ±time window around the SAR acquisition; build the probabilistic SAR-to-AIS association module; produce the first dark-vessel attribution dossier.
 
+### 2026-08-04 — Session #1 (continued): Phase 3 scaffold complete, waiting on NOAA AIS download
+- Laptop restarted again mid-session; this is the continuation after the summary request.
+- Re-verified on-disk state: `models/detector_runs/darkwatch_yolov8n_ssdd/weights/best.pt` present; 12 July 11 tiles ready; `data/processed/detections_20240711/contacts.json` contains 2 detections / 1 unique vessel near (-120.7308, 34.6105).
+- Implemented the Phase 3 probabilistic SAR-to-AIS association layer:
+  - `darkwatch/fusion/verdict.py` — `Verdict` enum (CLEAR, DARK, ARTIFACT, REVIEW).
+  - `darkwatch/fusion/ais.py` — `AISTrack` with linear interpolation to SAR time; combines AIS GPS uncertainty and interpolation uncertainty; `load_ais_csv()` streams NOAA CSV in chunks, filters by bbox/time, groups by MMSI.
+  - `darkwatch/fusion/associate.py` — `associate_contact()` computes Gaussian likelihood between a SAR contact and each interpolated AIS track plus a no-match alternative, then normalizes into component probabilities. `associate_all_contacts()` returns one `ContactVerdict` per contact with a list of `TrackAssociation` candidates. Verdicts are assigned by thresholds: CLEAR if any track probability dominates; DARK if no-match dominates and the contact is well-formed; ARTIFACT if detection confidence is very low; REVIEW otherwise.
+  - `scripts/fetch_ais.py` — downloads NOAA daily zip, unzips, filters to theater bbox and time window, writes `data/external/ais/ais_YYYY-MM-DD_clipped.csv`.
+  - `scripts/fuse_contacts.py` — loads contacts, loads clipped AIS CSV, runs association, writes `verdicts.json` + `summary.json`.
+  - `tests/test_fusion.py` — 6 unit tests covering CSV filtering, interpolation, CLEAR/DARK verdicts, probability normalization, and `associate_all_contacts()` output shape.
+- Updated `README.md` and `DOSSIER.md` §13 Quick Commands with the real CLI commands now used in the project.
+- Added `.gitignore` entries for `data/external/ais/`, extracted AIS dirs, `*.pt`, `yolo26n.pt`, and temporary notebook PNGs.
+- Started NOAA AIS download as a background task; observed very slow transfer (~12% after several minutes, ETA ~50 min).
+- **Next action:** wait for the NOAA AIS daily zip to finish, run `scripts/fetch_ais.py` filter, then run `scripts/fuse_contacts.py` to produce the first real dark-vessel attribution dossier.
+
 ---
 
 ## 12. Resources & Links
@@ -384,9 +407,10 @@ darkwatch/
 
 ## 13. Quick Commands
 
-TBD as the environment is stood up. Likely to include:
-
 ```bash
+# Run tests
+python -m pytest tests/ -q
+
 # Score candidate passes by open-water fraction and pick the best one
 python scripts/pick_ocean_scene.py --start 2024-07-01 --end 2024-07-31 --max-results 50
 
@@ -394,16 +418,29 @@ python scripts/pick_ocean_scene.py --start 2024-07-01 --end 2024-07-31 --max-res
 python scripts/fetch_first_scene.py --start 2024-07-11 --end 2024-07-12 --max-results 5 --download
 
 # Run the S1 prep pipeline
-python scripts/prep_s1.py "data/raw/s1/...SAFE" --output-dir data/processed/... --tile-size 1024 --overlap 128 --buffer-deg 0.005 --bbox "-120.8,34.3,-119.8,34.7"
+python scripts/prep_s1.py "data/raw/s1/...SAFE" --output-dir data/processed/... --tile-size 1024 --overlap 128 --buffer-deg 0.005 --bbox "-120.8,34.3,-119.8,34.7" --pol vv,vh
 
 # Validate tiles as a mosaic
 python scripts/mosaic_tiles.py data/processed/.../manifest.json --output notebooks/phase1_mosaic.png
 
-# Detect vessels
-darkwatch detect --tiles data/processed/tiles/ --output data/contacts.json
+# Detect vessels (dB -> uint8 contrast stretch is required for the SSDD-trained YOLO model)
+python scripts/detect_tiles.py \
+  --manifest data/processed/s1a_20240711_channel/manifest.json \
+  --model models/detector_runs/darkwatch_yolov8n_ssdd/weights/best.pt \
+  --db-lo -25 --db-hi -5 \
+  --output-dir data/processed/detections_20240711
 
-# Fuse with AIS and attribute
-darkwatch fuse --contacts data/contacts.json --ais data/raw/ais/... --output data/alerts.json
+# Fetch NOAA Marine Cadastre AIS for the acquisition date
+python scripts/fetch_ais.py --date 2024-07-11 \
+  --bbox "-120.8,34.3,-119.8,34.7" \
+  --center-time "2024-07-11T14:09:10Z" \
+  --time-window-minutes 60
+
+# Fuse SAR contacts with AIS tracks to produce dark-vessel verdicts
+python scripts/fuse_contacts.py \
+  --contacts data/processed/detections_20240711/contacts.json \
+  --ais data/external/ais/ais_2024-07-11_clipped.csv \
+  --output-dir data/processed/fusion_20240711
 ```
 
 ---
