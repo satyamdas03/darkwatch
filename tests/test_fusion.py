@@ -152,7 +152,13 @@ def test_verdict_probabilities_sum_to_one():
 
 
 def test_real_vessel_mass_is_partitioned_between_clear_and_dark():
-    """Regression: clear + dark must consume exactly the real-vessel mass."""
+    """Regression: real-vessel mass (clear + dark + review) must be conserved.
+
+    When a track lies inside the gate, review mass is zero and the original
+    invariant (clear + dark = real mass) still holds. When no track is near,
+    some dark mass is honestly moved to review, so clear + dark + review
+    must equal real mass.
+    """
     df = pd.DataFrame(
         [
             {"BaseDateTime": "2024-07-11T14:08:00Z", "LAT": 34.61, "LON": -120.73, "SOG": 10.0},
@@ -164,7 +170,8 @@ def test_real_vessel_mass_is_partitioned_between_clear_and_dark():
     contact = _contact_at(-120.73, 34.61, confidence=0.5)
     verdict = associate_contact(contact, [track])
     real_mass = 1.0 - verdict.p_artifact
-    assert np.isclose(verdict.p_clear + verdict.p_dark, real_mass, atol=1e-3)
+    assert np.isclose(verdict.p_clear + verdict.p_dark + verdict.p_review, real_mass, atol=1e-3)
+    assert verdict.n_tracks_within_gate == 1
 
 
 def test_associate_all_contacts_returns_one_per_contact():

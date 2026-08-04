@@ -14,9 +14,9 @@
 | **Tagline** | A radar contact with no transponder is either noise, a rig, a mismatch — or a ship that chose to disappear. Darkwatch decides which, and says how sure it is. |
 | **Goal** | Build a maritime surveillance system that detects vessels that have deliberately switched off AIS, by fusing free Sentinel-1 SAR imagery with AIS broadcasts, and produces calibrated, auditable dark-vessel verdicts. |
 | **Mode** | Impact-first, funding-agnostic, single-consumer-GPU research/engineering build. |
-| **Status** | Phase 2 — Vessel Detection COMPLETE (with known domain-gap limitations); Phase 3 Fusion & Attribution — first real dark-vessel verdict produced |
+| **Status** | Phase 2 — Vessel Detection COMPLETE (with known domain-gap limitations); Phase 3 Fusion & Attribution — first real dark-vessel verdict produced and calibrated with nearest-neighbor evidence |
 | **Start Date** | 2026-08-04 |
-| **Last Updated** | 2026-08-04 (NOAA AIS downloaded; first real DARK verdict: p=0.9732 for 1 contact at -120.7310, 34.6107) |
+| **Last Updated** | 2026-08-04 (DARK verdict refined to p_dark=0.73/p_review=0.24; nearest AIS 12.7 km away; human-readable fusion report generated) |
 | **Current Branch** | main |
 | **Git Remote** | Local only — create `satyamdas03/darkwatch` on GitHub and push when ready |
 | **Lead Engineer** | Bull (Claude Code agent) |
@@ -185,6 +185,10 @@ darkwatch/
 - [x] **Bug fix — `scripts/fetch_ais.py` download error handling:** replaced unreachable `if result.returncode != 0` after `check=True` with `try/except CalledProcessError`, and added `curl -C -` resume support for slow NOAA downloads.
 - [x] **NOAA Marine Cadastre daily AIS downloaded and filtered:** `data/external/ais/AIS_2024_07_11.zip` (~358 MB) extracted; filtered to 351 rows in theater/time window → 8 AIS tracks with ≥2 messages.
 - [x] **First real dark-vessel attribution run completed:** `scripts/fuse_contacts.py` produced `data/processed/fusion_20240711/verdicts.json`. The single SAR contact is classified **DARK** with `p_dark=0.9732`, `p_artifact=0.0268`, `p_clear=0.0`, no AIS track within 2,000 m gate.
+- [x] **Nearest-neighbor evidence added to fusion output:** `ContactVerdict` now carries `nearest_association`, `n_tracks_within_gate`, and `n_tracks_near_gate` so every unmatched contact reports the closest AIS track even when it lies outside the gate.
+- [x] **Coverage-gap / innocent-dropout adjustment added:** when no AIS track is within 2× the gate radius, the model shifts 25% of `p_dark` to `p_review`, producing a more honest uncertainty estimate. First real verdict updated to `p_dark=0.7299`, `p_review=0.2433`, `p_artifact=0.0268`, `p_clear=0.0`.
+- [x] **`scripts/fuse_contacts.py` now writes `summary.json`** alongside `verdicts.json` for run-level metadata.
+- [x] **Human-readable fusion report generated:** `notebooks/fusion_20240711_report.md` summarizes the verdict, all 9 MMSIs in the theater, and interpretation caveats.
 - [x] Unit tests pass (`pytest tests/ -q` → 14 passed).
 
 ### 6.1 Test Theater — Final Choice
@@ -415,6 +419,24 @@ darkwatch/
 - **Implication:** the one detectable vessel in the July 11 Santa Barbara Channel scene was **not transponding cooperatively** within 2,000 m and 60 min of the SAR capture. This is the first real Darkwatch dark-vessel output.
 - **Caveat:** S3 probabilities are model-based, not yet empirically calibrated. The high `p_dark` is driven by detector confidence (0.82) and absence of AIS within the gate; a transponding vessel just outside the gate or with a temporary AIS gap would look identical to the current model. Calibration against ground-truthable cases is the next critical step.
 - **Next action:** begin Phase 3 follow-up: (1) run a second scene with more traffic to get CLEAR examples, (2) implement static-object exclusion (rigs/platforms/MPAs), (3) collect calibration labels to check that p=0.97 actually means ~97% dark, (4) start Phase 4 behavior/intent context layer.
+
+### 2026-08-04 — Session #1 (continued): nearest-neighbor evidence + coverage-gap calibration
+- Revisited the first real dark-vessel verdict and identified the key calibration weakness: a transponding vessel just outside the 2,000 m gate would look identical to a dark vessel.
+- Enhanced `darkwatch/fusion/associate.py`:
+  - `ContactVerdict` now records `nearest_association`, `n_tracks_within_gate`, and `n_tracks_near_gate`.
+  - Added coverage-gap adjustment: when no AIS track exists within 2× the gate radius, 25% of `p_dark` is shifted to `p_review` to reflect innocent dropout / AIS gap uncertainty.
+  - Added proportional review shift when a track is just outside the gate (between 1× and 2× gate radius).
+  - Regression test updated to assert conservation of real-vessel mass across `clear + dark + review`.
+- Enhanced `scripts/fuse_contacts.py` to serialize `nearest_association` and write `summary.json` with scene time, gate radius, contact count, AIS track count, and verdict counts.
+- Re-ran fusion on the July 11 scene:
+  - Updated verdict: **DARK** with `p_dark=0.7299`, `p_review=0.2433`, `p_artifact=0.0268`, `p_clear=0.0`.
+  - Nearest AIS track: **MMSI 367726390 / BERNARDINE C**, moored/stationary at 34.55505, -120.60969, **12.7 km** from the SAR contact at SAR time.
+  - No AIS track within 2 km; no AIS track within 4 km.
+- Inspected all 9 MMSIs in the theater window; documented them in `notebooks/fusion_20240711_report.md`.
+- **Key finding:** the one detectable contact is isolated — no cooperative vessel passed within 4 km. The most likely alternatives are (a) genuine dark vessel, (b) radar artifact / fixed object. Static-object exclusion is now the highest-priority S3 follow-up.
+- **Files changed:** `darkwatch/fusion/associate.py`, `scripts/fuse_contacts.py`, `tests/test_fusion.py`, `DOSSIER.md`, `notebooks/fusion_20240711_report.md`.
+- **Tests:** 14 passed.
+- **Next action:** add static-object exclusion (oil platforms / Channel Islands rock locations) and run a second, busier Sentinel-1 scene to collect CLEAR matches for calibration.
 
 ---
 

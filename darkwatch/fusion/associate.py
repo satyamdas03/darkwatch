@@ -60,6 +60,9 @@ class ContactVerdict:
     # Evidence trail
     associations: list[TrackAssociation] = field(default_factory=list)
     best_association: TrackAssociation | None = None
+    nearest_association: TrackAssociation | None = None
+    n_tracks_within_gate: int = 0
+    n_tracks_near_gate: int = 0  # within 2x gate but outside
     reasoning: list[str] = field(default_factory=list)
 
     @property
@@ -116,9 +119,9 @@ def associate_contact(
         t_sar = t_sar.replace(tzinfo=timezone.utc)
 
     reasoning: list[str] = []
-    associations: list[TrackAssociation] = []
-
     sar_sigma = _sar_sigma_m(contact)
+    associations: list[TrackAssociation] = []
+    nearest_candidates: list[TrackAssociation] = []
 
     for track in tracks:
         interp = track.interpolate(t_sar, max_extrapolate_s=max_extrapolate_s)
@@ -126,22 +129,28 @@ def associate_contact(
             continue
         lon_i, lat_i, sigma_ais = interp
         d = _haversine_m(contact.center_lat, contact.center_lon, lat_i, lon_i)
-        if d > gate_radius_m:
-            continue
 
         sigma_total = math.hypot(sigma_ais, sar_sigma)
         likelihood = _gaussian_likelihood(d, sigma_total)
-        associations.append(
-            TrackAssociation(
-                mmsi=track.mmsi,
-                distance_m=d,
-                sigma_m=sigma_total,
-                likelihood=likelihood,
-                interpolated_lon=lon_i,
-                interpolated_lat=lat_i,
-                vessel_name=track.vessel_name,
-            )
+        assoc = TrackAssociation(
+            mmsi=track.mmsi,
+            distance_m=d,
+            sigma_m=sigma_total,
+            likelihood=likelihood,
+            interpolated_lon=lon_i,
+            interpolated_lat=lat_i,
+            vessel_name=track.vessel_name,
         )
+        nearest_candidates.append(assoc)
+        if d <= gate_radius_m:
+            associations.append(assoc)
+
+    nearest_candidates.sort(key=lambda a: a.distance_m)
+    nearest_association = nearest_candidates[0] if nearest_candidates else None
+    n_tracks_within_gate = len(associations)
+    n_tracks_near_gate = len(
+        [a for a in nearest_candidates if gate_radius_m < a.distance_m <= 2 * gate_radius_m]
+    )
 
     # Sort by likelihood descending.
     associations.sort(key=lambda a: a.likelihood, reverse=True)
@@ -179,11 +188,29 @@ def associate_contact(
     p_matched_given_real = p_clear
     p_clear = real_mass * p_matched_given_real
     p_dark = real_mass * (1.0 - p_matched_given_real)
-
-    # Review probability is intentionally zero in this closed decomposition;
-    # the REVIEW verdict is produced when no component is strong enough to
-    # dominate (see ContactVerdict.verdict).
     p_review = 0.0
+
+    # Innocent AIS dropout / coverage-gap adjustment.
+    # If a track is just outside the gate we cannot confidently call the vessel
+    # dark. If no tracks are anywhere nearby we may be in an AIS coverage gap.
+    # Shift some mass from dark to review proportionally to the gap evidence.
+    if p_dark > 0 and n_tracks_near_gate > 0 and nearest_association is not None:
+        gap_ratio = max(0.0, 1.0 - nearest_association.distance_m / (2 * gate_radius_m))
+        if gap_ratio > 0.0:
+            shift = p_dark * gap_ratio * 0.5
+            p_review += shift
+            p_dark -= shift
+            reasoning.append(
+                f"Nearest AIS track MMSI {nearest_association.mmsi} is "
+                f"{nearest_association.distance_m:.0f} m from contact (outside gate); "
+                f"shifting {shift:.3f} probability from dark to review."
+            )
+    elif p_dark > 0 and n_tracks_within_gate == 0 and n_tracks_near_gate == 0:
+        # No tracks anywhere nearby: high uncertainty about deliberate switch-off.
+        shift = p_dark * 0.25
+        p_review += shift
+        p_dark -= shift
+        reasoning.append("No AIS tracks within 2x gate radius; reducing dark confidence due to possible coverage gap.")
 
     if best_association:
         reasoning.append(
@@ -211,6 +238,9 @@ def associate_contact(
         p_review=p_review,
         associations=associations,
         best_association=best_association,
+        nearest_association=nearest_association,
+        n_tracks_within_gate=n_tracks_within_gate,
+        n_tracks_near_gate=n_tracks_near_gate,
         reasoning=reasoning,
     )
 

@@ -93,19 +93,21 @@ def main() -> int:
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    def _assoc_dict(a):
+        if a is None:
+            return None
+        return {
+            "mmsi": a.mmsi,
+            "vessel_name": a.vessel_name,
+            "distance_m": round(a.distance_m, 1),
+            "sigma_m": round(a.sigma_m, 1),
+            "interpolated_lon": a.interpolated_lon,
+            "interpolated_lat": a.interpolated_lat,
+            "p_match": round(a.likelihood, 4),
+        }
+
     results = []
     for v in verdicts:
-        assoc = None
-        if v.best_association:
-            assoc = {
-                "mmsi": v.best_association.mmsi,
-                "vessel_name": v.best_association.vessel_name,
-                "distance_m": v.best_association.distance_m,
-                "sigma_m": v.best_association.sigma_m,
-                "interpolated_lon": v.best_association.interpolated_lon,
-                "interpolated_lat": v.best_association.interpolated_lat,
-                "p_match": v.best_association.likelihood,
-            }
         results.append(
             {
                 "contact_id": v.contact_id,
@@ -114,7 +116,10 @@ def main() -> int:
                 "p_clear": round(v.p_clear, 4),
                 "p_dark": round(v.p_dark, 4),
                 "p_review": round(v.p_review, 4),
-                "best_association": assoc,
+                "n_tracks_within_gate": v.n_tracks_within_gate,
+                "n_tracks_near_gate": v.n_tracks_near_gate,
+                "best_association": _assoc_dict(v.best_association),
+                "nearest_association": _assoc_dict(v.nearest_association),
                 "reasoning": v.reasoning,
             }
         )
@@ -127,7 +132,17 @@ def main() -> int:
     counts: dict[str, int] = {}
     for v in verdicts:
         counts[v.verdict.value] = counts.get(v.verdict.value, 0) + 1
+    summary = {
+        "scene_time": t_sar.isoformat() if t_sar else None,
+        "gate_radius_m": args.gate_m,
+        "contacts_fused": len(contacts),
+        "ais_tracks_loaded": len(tracks),
+        "verdict_counts": counts,
+    }
+    summary_path = output_dir / "summary.json"
+    summary_path.write_text(json.dumps(summary, indent=2))
     print("Verdict summary:", counts)
+    print(f"Summary saved to {summary_path}")
 
     return 0
 

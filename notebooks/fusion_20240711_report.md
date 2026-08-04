@@ -1,0 +1,103 @@
+# Darkwatch Fusion Report — 2024-07-11 Santa Barbara Channel
+
+**SAR acquisition:** `S1A_IW_GRDH_1SDV_20240711T140858_20240711T140923_054714_06A94E_9466`  
+**SAR time (center):** 2024-07-11 14:09:10 UTC  
+**AIS source:** NOAA Marine Cadastre `AIS_2024_07_11.csv`  
+**Theater bbox:** `-120.8, 34.3, -119.8, 34.7`
+
+---
+
+## 1. SAR Contact
+
+| Field | Value |
+|---|---|
+| Contact ID | `S1A_IW_GRDH_1SDV_20240711T140858_20240711T140923_054714_06A94E_9466_vh_c3314_r10814_det0000` |
+| Polarization | VH (higher-confidence duplicate merged with VV) |
+| Confidence | 0.82 |
+| Center | `-120.73098, 34.61067` |
+| Estimated size | ~214 m × 167 m |
+| Pixel bbox | `[110.4, 39.5, 131.8, 56.2]` |
+
+The contact is a single, relatively large, high-confidence detection after VV/VH deduplication.
+
+---
+
+## 2. Verdict
+
+| Component | Probability |
+|---|---|
+| `p_clear` (matched to AIS) | 0.0000 |
+| `p_dark` (real vessel, no AIS) | 0.7299 |
+| `p_review` (uncertain) | 0.2433 |
+| `p_artifact` (false contact) | 0.0268 |
+| **Discrete verdict** | **DARK** |
+
+The model still leans dark, but a quarter of the probability mass has been honestly moved to `REVIEW` because **no AIS track exists within 4 km of the contact at SAR time**. This addresses the key calibration risk that a transponding vessel just outside the 2 km gate would look identical to a dark vessel under the previous model.
+
+---
+
+## 3. Nearest AIS Evidence
+
+| Field | Value |
+|---|---|
+| Nearest MMSI | `367726390` |
+| Vessel name | `BERNARDINE C` |
+| Distance at SAR time | **12,710 m** |
+| Interpolated position | `-120.60969, 34.55505` |
+| AIS status | 5 (moored / stationary) |
+| Messages in window | 34 |
+
+`BERNARDINE C` is stationary and moored ~12.7 km east-southeast of the SAR contact. It is too far away to explain the contact, but its presence confirms AIS coverage was operating in the broader theater.
+
+---
+
+## 4. All AIS Tracks in Theater Window
+
+The clipped AIS file contains **351 broadcast rows** from **9 unique MMSIs**. After grouping by MMSI and requiring ≥2 messages, **8 tracks** were loaded for fusion.
+
+| MMSI | Name | Messages | Behavior at SAR time | Approx. distance from contact |
+|---|---|---|---|---|
+| 338140285 | FISH THREE | 1 | Single message (excluded from tracks) | — |
+| 338429108 | LISTO | 27 | First message at 14:17; extrapolated near 34.45, -120.42 | ~20 km NE |
+| 367104040 | KNOX T | 91 | Moving E/NE along 34.39 N | ~35 km SE |
+| 367104050 | RYAN T | 104 | Moving W/SW near 34.39, -120.12 | ~38 km E |
+| 367421980 | JACKIE C | 30 | Near 34.39, -120.16 / 34.39, -120.12 | ~35 km E |
+| 367546320 | OCEAN DEFENDER | 35 | Stationary at 34.45, -120.34 | ~22 km NE |
+| 367726390 | BERNARDINE C | 34 | Stationary / moored at 34.56, -120.61 | **12.7 km ESE** |
+| 477282600 | SAGA ENTERPRISE | 23 | First message at 14:44; extrapolated far south | ~40 km SE |
+| 477776200 | COSCO SPAIN | 6 | First message at 15:02; extrapolated far south | ~45 km SE |
+
+No vessel track passes within the 2 km association gate around the contact. The closest active traffic lanes are 12–22 km away.
+
+---
+
+## 5. Interpretation
+
+A large (~214 m) radar contact with no nearby AIS match is either:
+
+1. A genuine dark vessel that switched off or spoofed its AIS before the SAR pass.
+2. A transponding vessel with a temporary AIS outage in the exact SAR instant (unlikely given no track within 12 km).
+3. A non-vessel radar artifact or fixed object (e.g., small island, platform, wind streak) — probability mass `p_artifact = 0.027`.
+
+The current model cannot distinguish (1) from a fixed object because the Darkwatch pipeline does not yet have a static-object exclusion layer (oil rigs, platforms, known islets). Until that layer is added, a **DARK** verdict for an isolated contact should be treated as a **candidate requiring human review**, not a confirmed accusation.
+
+---
+
+## 6. Known Limitations
+
+- **SSDD→GRD domain gap:** the YOLOv8n detector was trained on small JPEG chips and has low recall on real Sentinel-1 GRD. Only one contact was detected in the scene; the true number of vessels present may be higher.
+- **Single scene, single contact:** calibration of `p_dark` requires many more examples, including confirmed CLEAR matches and confirmed dark vessels.
+- **No static-object exclusion:** oil platforms, rigs, and small rocky islets in the Santa Barbara Channel are not yet ruled out.
+- **Temporal interpolation uncertainty:** tracks extrapolated backward from their first message or forward from their last message carry higher uncertainty. In this scene, the nearest track (`BERNARDINE C`) has dense messages and is confidently stationary, so the 12.7 km distance is reliable.
+
+---
+
+## 7. Files Produced
+
+- `data/processed/fusion_20240711/verdicts.json` — per-contact verdict with probabilities and reasoning.
+- `data/processed/fusion_20240711/summary.json` — run-level summary (counts, gate radius, scene time).
+- `data/external/ais/ais_2024-07-11_clipped.csv` — 351 AIS rows in the theater/time window.
+
+---
+
+*Generated by Darkwatch S3 Fusion on 2026-08-04.*
