@@ -12,6 +12,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
+import math
+
 import numpy as np
 import rasterio
 import shapely
@@ -220,6 +222,29 @@ def _pixel_size_meters(gcps: list[GroundControlPoint]) -> float:
     return dist / pix_dist
 
 
+def _haversine_m(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Great-circle distance in metres between two WGS84 points."""
+    R = 6_371_000
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lon2 - lon1)
+    h = math.sin(dphi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2) ** 2
+    return 2 * R * math.asin(math.sqrt(h))
+
+
+def _deduplicate_contacts(contacts: list[Contact], distance_m: float = 100.0) -> list[Contact]:
+    """Merge contacts that are likely the same physical vessel.
+
+    Keeps the highest-confidence contact from each spatial cluster.
+    """
+    sorted_contacts = sorted(contacts, key=lambda c: c.confidence, reverse=True)
+    kept: list[Contact] = []
+    for candidate in sorted_contacts:
+        if not any(_haversine_m(candidate.center_lat, candidate.center_lon, k.center_lat, k.center_lon) < distance_m for k in kept):
+            kept.append(candidate)
+    return kept
+
+
 def detect_tiles(
     detector: VesselDetector,
     tile_manifest_path: Path | str,
@@ -228,6 +253,7 @@ def detect_tiles(
     iou: float = 0.45,
     imgsz: int = 640,
     db_range: tuple[float, float] | None = (-25.0, -5.0),
+    polarizations: Iterable[str] | None = None,
 ) -> list[Contact]:
     """Run detector on all tiles in a Darkwatch manifest and geo-locate contacts.
 
@@ -238,6 +264,8 @@ def detect_tiles(
         conf, iou, imgsz: inference parameters.
         db_range: dB contrast-stretch range for float GeoTIFF tiles; set to
             ``None`` to skip stretching.
+        polarizations: if provided, only process tiles whose metadata
+            ``polarization`` field is in this set (e.g. {"vv"} or {"vv", "vh"}).
 
     Returns:
         List of Contact objects, one per detection.
@@ -248,8 +276,20 @@ def detect_tiles(
     labels_dir.mkdir(parents=True, exist_ok=True)
 
     manifest = json.loads(Path(tile_manifest_path).read_text())
-    image_paths = [Path(p) for p in manifest["tiles"]]
-    tile_meta = [json.loads(Path(p).read_text()) for p in manifest["tile_meta"]]
+    all_image_paths = [Path(p) for p in manifest["tiles"]]
+    all_tile_meta = [json.loads(Path(p).read_text()) for p in manifest["tile_meta"]]
+
+    if polarizations is not None:
+        pol_set = {p.lower() for p in polarizations}
+        image_paths = []
+        tile_meta = []
+        for img_path, meta in zip(all_image_paths, all_tile_meta):
+            if meta.get("polarization", "").lower() in pol_set:
+                image_paths.append(img_path)
+                tile_meta.append(meta)
+    else:
+        image_paths = all_image_paths
+        tile_meta = all_tile_meta
 
     scene_name = manifest["scene_name"]
     acquisition_time = datetime.fromisoformat(manifest["acquisition_time"])
@@ -310,6 +350,9 @@ def detect_tiles(
                     source=f"{detector.model_path}",
                 )
             )
+
+    # Merge contacts from overlapping tiles that describe the same physical vessel.
+    contacts = _deduplicate_contacts(contacts, distance_m=100.0)
 
     # Write YOLO-style detection labels and a JSON contact list.
     for contact in contacts:
