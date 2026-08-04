@@ -24,10 +24,12 @@ python scripts/prepare_ssdd.py
 python scripts/train_detector.py --epochs 30 --batch 4
 
 # Detect vessels in tiles (dB -> uint8 contrast stretch is required for the SSDD-trained YOLO model)
+# Use both VV and VH; overlapping detections are deduplicated by haversine distance.
 python scripts/detect_tiles.py \
   --manifest data/processed/s1a_YYYYMMDD_channel/manifest.json \
   --model models/detector_runs/darkwatch_yolov8n_ssdd/weights/best.pt \
   --db-lo -25 --db-hi -5 \
+  --pol vv,vh \
   --output-dir data/processed/detections_YYYYMMDD
 
 # Fetch NOAA Marine Cadastre AIS for the acquisition date

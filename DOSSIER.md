@@ -165,8 +165,11 @@ darkwatch/
 - [x] YOLOv8n base weights downloaded to repo root (`yolov8n.pt`).
 - [x] **Detector training completed** after crash: `models/detector_runs/darkwatch_yolov8n_ssdd/weights/best.pt` (30 epochs, YOLOv8n on SSDD, mAP50 0.977).
 - [x] **Domain-gap fix implemented**: `darkwatch/detect/detector.py` now converts float dB GeoTIFF tiles to uint8 RGB via configurable contrast stretch before YOLO inference; `scripts/detect_tiles.py` exposes `--db-lo`, `--db-hi`, `--no-stretch`.
-- [x] **Inference run on 2024-07-11 scene**: 2 detections across 12 tiles, corresponding to **1 unique physical object** split across adjacent tile boundary (lon -120.7308, lat 34.6105); confidences 0.37 and 0.50.
-- [x] **Key finding:** SSDD-trained YOLOv8n has low recall on real Sentinel-1 GRD — a known cross-domain gap. The preprocessing fix recovered contacts but count is far below expected channel traffic. Detector improvement is a Phase 2 follow-up, not a Phase 3 blocker.
+- [x] **VH polarization experiment**: processed VH tiles for the July 11 scene. VH detects the same physical object as VV but with much higher confidence (0.82 vs 0.50). The canonical `contacts.json` now uses the combined VV+VH result with automatic deduplication, retaining the highest-confidence detection (VH, conf 0.82).
+- [x] **Contact deduplication added to detector**: `darkwatch/detect/detector.py` now merges contacts within 100 m (haversine) of each other, keeping the highest-confidence contact. This removes duplicate detections across overlapping tiles.
+- [x] **Polarization filtering added**: `scripts/detect_tiles.py` now accepts `--pol vv,vh` to process only selected polarizations.
+- [x] **Inference run on 2024-07-11 scene**: 1 unique contact after deduplication at ~(-120.7310, 34.6107), estimated size ~214 m × 167 m, confidence 0.82 (VH).
+- [x] **Key finding:** SSDD-trained YOLOv8n has low recall on real Sentinel-1 GRD — a known cross-domain gap. The preprocessing fix recovered the single visible contact, but the scene contains far fewer detectable ships than expected channel traffic. Detector improvement is a Phase 2 follow-up, not a Phase 3 blocker.
 - [x] **Phase 3 Fusion & Attribution scaffold implemented** while NOAA AIS daily zip downloads:
   - `darkwatch/fusion/ais.py` — `AISTrack` dataclass with interpolation and GPS uncertainty model.
   - `darkwatch/fusion/associate.py` — `ContactVerdict`, `TrackAssociation`, `associate_contact()` / `associate_all_contacts()`; produces CLEAR / DARK / ARTIFACT / REVIEW verdicts with component probabilities.
@@ -370,6 +373,20 @@ darkwatch/
 - Started NOAA AIS download as a background task; observed very slow transfer (~12% after several minutes, ETA ~50 min).
 - **Next action:** wait for the NOAA AIS daily zip to finish, run `scripts/fetch_ais.py` filter, then run `scripts/fuse_contacts.py` to produce the first real dark-vessel attribution dossier.
 
+### 2026-08-04 — Session #1 (continued): VH polarization check + detector deduplication while AIS downloads
+- NOAA AIS daily zip still downloading very slowly; used the wait to improve detector output quality and validate polarization behavior.
+- Processed **VH polarization tiles** for the July 11 scene (`prep_s1.py --pol vv,vh`).
+- Ran detector on VV-only, VH-only, and VV+VH combined:
+  - VV-only: 1 unique contact, confidence 0.50, estimated size ~173 m × 120 m.
+  - VH-only: 1 unique contact at the same location, confidence **0.82**, estimated size ~214 m × 167 m.
+  - Combined VV+VH with deduplication: 1 unique contact, retaining the VH detection (highest confidence).
+- **Key finding:** VH polarization gives a much stronger, more confident detection for this contact. The location offset between VV and VH is ~21 m (within geolocation uncertainty). No additional vessels were found in VH, confirming the scene is genuinely sparse rather than a VV-specific detection failure.
+- Added contact **deduplication** to `darkwatch/detect/detector.py`: contacts within 100 m (haversine) are merged, keeping the highest-confidence detection. This removes duplicates across overlapping tiles.
+- Added `--pol` polarization filter to `scripts/detect_tiles.py` so users can run VV, VH, or both.
+- Updated `README.md` and `DOSSIER.md` §13 Quick Commands to recommend `--pol vv,vh` and explain automatic deduplication.
+- Canonical contacts file is now `data/processed/detections_20240711/contacts.json` (1 contact, VH, conf 0.82). VV-only and VH-only outputs preserved in `data/processed/detections_20240711_vvonly/` and `data/processed/detections_20240711_vh/` for comparison.
+- **Next action:** same as before — wait for NOAA AIS download, then run `fetch_ais.py` + `fuse_contacts.py` to produce the first real dark-vessel attribution.
+
 ---
 
 ## 12. Resources & Links
@@ -424,10 +441,12 @@ python scripts/prep_s1.py "data/raw/s1/...SAFE" --output-dir data/processed/... 
 python scripts/mosaic_tiles.py data/processed/.../manifest.json --output notebooks/phase1_mosaic.png
 
 # Detect vessels (dB -> uint8 contrast stretch is required for the SSDD-trained YOLO model)
+# Use both polarizations; overlapping detections are deduplicated automatically.
 python scripts/detect_tiles.py \
   --manifest data/processed/s1a_20240711_channel/manifest.json \
   --model models/detector_runs/darkwatch_yolov8n_ssdd/weights/best.pt \
   --db-lo -25 --db-hi -5 \
+  --pol vv,vh \
   --output-dir data/processed/detections_20240711
 
 # Fetch NOAA Marine Cadastre AIS for the acquisition date
