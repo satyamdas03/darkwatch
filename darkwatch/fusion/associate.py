@@ -171,10 +171,12 @@ def associate_contact(
     p_artifact = (1.0 - p_real_vessel) * DEFAULT_ARTIFACT_PRIOR
 
     # Remaining real-vessel mass is split between clear and dark according to
-    # the AIS evidence.
+    # the AIS evidence. Capture the AIS-derived match probability first so it
+    # is not corrupted by the rescaling on the next line.
     real_mass = max(0.0, 1.0 - p_artifact)
-    p_clear = real_mass * p_clear
-    p_dark = real_mass * (1.0 - p_clear)
+    p_matched_given_real = p_clear
+    p_clear = real_mass * p_matched_given_real
+    p_dark = real_mass * (1.0 - p_matched_given_real)
 
     # Review probability is intentionally zero in this closed decomposition;
     # the REVIEW verdict is produced when no component is strong enough to

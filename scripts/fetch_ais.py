@@ -39,19 +39,23 @@ def _daily_csv_url(date: datetime) -> str:
 
 
 def download_file(url: str, dest: Path) -> None:
-    """Download ``url`` to ``dest`` using curl (available in Git Bash on Windows)."""
+    """Download ``url`` to ``dest`` using curl (available in Git Bash on Windows).
+
+    Uses ``curl -C -`` so a partially-written file resumes instead of restarting.
+    """
     import subprocess
 
     dest.parent.mkdir(parents=True, exist_ok=True)
     print(f"Downloading {url} ...")
-    result = subprocess.run(
-        ["curl", "-L", "-o", str(dest), url],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
-        raise RuntimeError(f"Download failed: {result.stderr}")
+    try:
+        subprocess.run(
+            ["curl", "-L", "-C", "-", "-o", str(dest), url],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except subprocess.CalledProcessError as exc:
+        raise RuntimeError(f"Download failed: {exc.stderr}") from exc
     print(f"Saved to {dest}")
 
 

@@ -151,6 +151,22 @@ def test_verdict_probabilities_sum_to_one():
     assert np.isclose(total, 1.0, atol=1e-3)
 
 
+def test_real_vessel_mass_is_partitioned_between_clear_and_dark():
+    """Regression: clear + dark must consume exactly the real-vessel mass."""
+    df = pd.DataFrame(
+        [
+            {"BaseDateTime": "2024-07-11T14:08:00Z", "LAT": 34.61, "LON": -120.73, "SOG": 10.0},
+            {"BaseDateTime": "2024-07-11T14:10:00Z", "LAT": 34.61, "LON": -120.73, "SOG": 10.0},
+        ]
+    )
+    df["BaseDateTime"] = pd.to_datetime(df["BaseDateTime"], utc=True)
+    track = AISTrack(mmsi=123456789, messages=df)
+    contact = _contact_at(-120.73, 34.61, confidence=0.5)
+    verdict = associate_contact(contact, [track])
+    real_mass = 1.0 - verdict.p_artifact
+    assert np.isclose(verdict.p_clear + verdict.p_dark, real_mass, atol=1e-3)
+
+
 def test_associate_all_contacts_returns_one_per_contact():
     df = pd.DataFrame(
         [
