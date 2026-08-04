@@ -222,9 +222,16 @@ def load_ais_csv(
                 & (chunk["LAT"] <= max_lat)
             ]
 
-        # Temporal filter.
+        # Temporal filter. Ensure window boundaries are UTC-aware to match
+        # the parsed BaseDateTime column.
         if time_window is not None:
             t_start, t_end = time_window
+            t_start = pd.Timestamp(t_start)
+            t_end = pd.Timestamp(t_end)
+            if t_start.tzinfo is None:
+                t_start = t_start.tz_localize("UTC")
+            if t_end.tzinfo is None:
+                t_end = t_end.tz_localize("UTC")
             chunk = chunk[(chunk["BaseDateTime"] >= t_start) & (chunk["BaseDateTime"] <= t_end)]
 
         if len(chunk):

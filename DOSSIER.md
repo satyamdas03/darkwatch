@@ -14,9 +14,9 @@
 | **Tagline** | A radar contact with no transponder is either noise, a rig, a mismatch — or a ship that chose to disappear. Darkwatch decides which, and says how sure it is. |
 | **Goal** | Build a maritime surveillance system that detects vessels that have deliberately switched off AIS, by fusing free Sentinel-1 SAR imagery with AIS broadcasts, and produces calibrated, auditable dark-vessel verdicts. |
 | **Mode** | Impact-first, funding-agnostic, single-consumer-GPU research/engineering build. |
-| **Status** | Phase 2 — Vessel Detection COMPLETE (with known domain-gap limitations); Phase 3 Fusion & Attribution in progress |
+| **Status** | Phase 2 — Vessel Detection COMPLETE (with known domain-gap limitations); Phase 3 Fusion & Attribution — first real dark-vessel verdict produced |
 | **Start Date** | 2026-08-04 |
-| **Last Updated** | 2026-08-04 (detector trained + inference fix + Phase 3 AIS download started) |
+| **Last Updated** | 2026-08-04 (NOAA AIS downloaded; first real DARK verdict: p=0.9732 for 1 contact at -120.7310, 34.6107) |
 | **Current Branch** | main |
 | **Git Remote** | Local only — create `satyamdas03/darkwatch` on GitHub and push when ready |
 | **Lead Engineer** | Bull (Claude Code agent) |
@@ -180,7 +180,12 @@ darkwatch/
   - `scripts/fetch_ais.py` — download NOAA daily AIS zip, unzip, filter to bbox/time window, write clipped CSV.
   - `scripts/fuse_contacts.py` — load contacts + AIS, run association, write `verdicts.json` with summary counts.
   - `tests/test_fusion.py` — unit tests for AIS CSV filtering, track interpolation, CLEAR/DARK verdicts, probability normalization.
-- [x] Unit tests pass (`pytest tests/ -q` → 13 passed).
+- [x] **Bug fix — `darkwatch/fusion/associate.py` probability decomposition regression caught and fixed:** original code overwrote `p_clear` before computing `p_dark`, corrupting the real-vessel mass split. Fixed by preserving `p_matched_given_real` and rescaling both components. Added regression test `test_real_vessel_mass_is_partitioned_between_clear_and_dark`; total tests now **14 passed**.
+- [x] **Bug fix — timezone-aware vs naive datetime handling in fusion:** `load_ais_csv()` now localizes UTC-naive time-window boundaries; `associate_contact()` now localizes UTC-naive `t_sar` before AIS interpolation. This resolves `Cannot compare tz-naive and tz-aware datetime-like objects` on real NOAA CSV.
+- [x] **Bug fix — `scripts/fetch_ais.py` download error handling:** replaced unreachable `if result.returncode != 0` after `check=True` with `try/except CalledProcessError`, and added `curl -C -` resume support for slow NOAA downloads.
+- [x] **NOAA Marine Cadastre daily AIS downloaded and filtered:** `data/external/ais/AIS_2024_07_11.zip` (~358 MB) extracted; filtered to 351 rows in theater/time window → 8 AIS tracks with ≥2 messages.
+- [x] **First real dark-vessel attribution run completed:** `scripts/fuse_contacts.py` produced `data/processed/fusion_20240711/verdicts.json`. The single SAR contact is classified **DARK** with `p_dark=0.9732`, `p_artifact=0.0268`, `p_clear=0.0`, no AIS track within 2,000 m gate.
+- [x] Unit tests pass (`pytest tests/ -q` → 14 passed).
 
 ### 6.1 Test Theater — Final Choice
 
@@ -216,7 +221,7 @@ darkwatch/
 | 0 | **Recon & first light** | Get real SAR onto the screen; pick test theater | ✅ Complete | Bull | Copernicus + NOAA verified; first scene calibrated and viewed |
 | 1 | **SAR Ingestion & Prep (S1)** | Scenes → analysis-ready tiles, automatically | ✅ Complete | Bull | `prep_s1.py`; land-mask → tile pipeline validated on ocean scene |
 | 2 | **Vessel Detection (S2)** | Scene in, clean contacts out | ✅ Complete (baseline) | Bull | YOLOv8n trained; dB→uint8 preprocessing fixes inference; low recall due to SSDD→GRD domain gap — improvement tracked as follow-up |
-| 3 | **Fusion & Attribution (S3)** ★ | Calibrated dark-vessel attribution | 🚧 In Progress | Bull | **Make-or-break phase**; NOAA AIS daily zip downloading |
+| 3 | **Fusion & Attribution (S3)** ★ | Calibrated dark-vessel attribution | ✅ Baseline complete | Bull | First real DARK verdict produced; calibration/validation now make-or-break |
 | 4 | **Behavior & Intent (S4)** | Ranked alerts with context | ⏳ Pending | Bull | Use GFW + public zone data |
 | 5 | **Evidence Layer (S5)** | Auditable dossiers + validation | ⏳ Pending | Bull | Write up method |
 
@@ -274,10 +279,12 @@ darkwatch/
 | 2026-08-04 | Which open SAR ship detection dataset has the most permissive license? | Medium — blocks S2 | Bull |
 | 2026-08-04 | ✅ RESOLVED — Detector training completed; weights at `models/detector_runs/darkwatch_yolov8n_ssdd/weights/best.pt` | — | Bull |
 | 2026-08-04 | ⚠️ WATCH — SSDD→GRD domain gap yields very low recall on real tiles (1 unique contact) | Medium — limits S2 utility; not a Phase 3 blocker | Bull |
-| 2026-08-04 | 🚧 IN PROGRESS — AIS data pull for the 2024-07-11 Santa Barbara Channel window (`AIS_2024_07_11.zip` downloading) | Medium — blocks S3 fusion validation | Bull |
+| 2026-08-04 | ✅ RESOLVED — AIS data pull for the 2024-07-11 Santa Barbara Channel window (`AIS_2024_07_11.zip` downloaded, filtered, fused) | — | Bull |
 | 2026-08-04 | ✅ RESOLVED — Darkwatch extracted into its own git repository at `C:/Users/point/projects/darkwatch` | — | Bull |
+| 2026-08-04 | ✅ RESOLVED — First real dark-vessel attribution verdict produced (DARK, p=0.9732) | — | Bull |
 | 2026-08-04 | Create/push `satyamdas03/darkwatch` GitHub repository | Low — local repo is safe; remote needed for backup/collaboration | Bull |
-| 2026-08-04 | AIS data pull for the 2024-07-11 Santa Barbara Channel window | Medium — blocks S3 fusion validation | Bull |
+| 2026-08-04 | Validate/calibrate S3 probabilities on ground-truthable cases | High — p=0.97 is a model output, not yet a calibrated belief | Bull |
+| 2026-08-04 | Address SSDD→GRD domain gap to improve detector recall | Medium — needed before operational scale; options: LS-SSDD-v1.0, HRSID, real GRD chips, larger backbone, CFAR fallback | Bull |
 
 ---
 
@@ -391,6 +398,23 @@ darkwatch/
 - Updated `README.md` and `DOSSIER.md` §13 Quick Commands to recommend `--pol vv,vh` and explain automatic deduplication.
 - Canonical contacts file is now `data/processed/detections_20240711/contacts.json` (1 contact, VH, conf 0.82). VV-only and VH-only outputs preserved in `data/processed/detections_20240711_vvonly/` and `data/processed/detections_20240711_vh/` for comparison.
 - **Next action:** same as before — wait for NOAA AIS download, then run `fetch_ais.py` + `fuse_contacts.py` to produce the first real dark-vessel attribution.
+
+### 2026-08-04 — Session #1 (continued): first real dark-vessel attribution verdict produced
+- NOAA AIS daily zip `AIS_2024_07_11.zip` (~358 MB) finished downloading after a slow (~1 hour) transfer.
+- Ran `scripts/fetch_ais.py --date 2024-07-11 --bbox "-120.8,34.3,-119.8,34.7" --center-time "2024-07-11T14:09:10Z" --time-window-minutes 60 --keep-zip`:
+  - Extracted 1 CSV; filtered to **351 AIS rows** in theater/time window; grouped into **8 AIS tracks** with ≥2 messages.
+- Fixed timezone-aware vs naive datetime mismatch in the fusion pipeline:
+  - `darkwatch/fusion/ais.py` `load_ais_csv()`: UTC-naive time-window boundaries are localized to UTC before filtering against UTC-aware `BaseDateTime`.
+  - `darkwatch/fusion/associate.py` `associate_contact()`: UTC-naive `t_sar` (from `contact.acquisition_time`) is localized to UTC before AIS interpolation.
+- Fixed probability-decomposition regression in `darkwatch/fusion/associate.py`: original code overwrote `p_clear` before computing `p_dark`; now `p_matched_given_real` is preserved so `p_clear` and `p_dark` correctly partition the real-vessel mass. Added regression test; tests now **14 passed**.
+- Fixed `scripts/fetch_ais.py` download error handling: replaced unreachable `result.returncode` check with `try/except CalledProcessError` and added `curl -C -` resume support.
+- Ran `scripts/fuse_contacts.py --contacts data/processed/detections_20240711/contacts.json --ais data/external/ais/ais_2024-07-11_clipped.csv --output-dir data/processed/fusion_20240711`:
+  - **Verdict summary: `DARK: 1`**.
+  - Single SAR contact `S1A_IW_GRDH_1SDV_20240711T140858_20240711T140923_054714_06A94E_9466_vh_c3314_r10814_det0000` at **(-120.7310, 34.6107)**, confidence 0.82, estimated size ~214 m × 167 m.
+  - `verdicts.json`: `p_artifact=0.0268`, `p_clear=0.0`, `p_dark=0.9732`, `p_review=0.0`, reasoning = "No AIS track within gate radius." and "No AIS match within gate; contact is candidate dark vessel if real."
+- **Implication:** the one detectable vessel in the July 11 Santa Barbara Channel scene was **not transponding cooperatively** within 2,000 m and 60 min of the SAR capture. This is the first real Darkwatch dark-vessel output.
+- **Caveat:** S3 probabilities are model-based, not yet empirically calibrated. The high `p_dark` is driven by detector confidence (0.82) and absence of AIS within the gate; a transponding vessel just outside the gate or with a temporary AIS gap would look identical to the current model. Calibration against ground-truthable cases is the next critical step.
+- **Next action:** begin Phase 3 follow-up: (1) run a second scene with more traffic to get CLEAR examples, (2) implement static-object exclusion (rigs/platforms/MPAs), (3) collect calibration labels to check that p=0.97 actually means ~97% dark, (4) start Phase 4 behavior/intent context layer.
 
 ---
 

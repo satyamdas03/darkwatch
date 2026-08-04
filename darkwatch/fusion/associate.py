@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Iterable
 
 import numpy as np
@@ -112,6 +112,8 @@ def associate_contact(
     """
     if t_sar is None:
         t_sar = contact.acquisition_time
+    if isinstance(t_sar, datetime) and t_sar.tzinfo is None:
+        t_sar = t_sar.replace(tzinfo=timezone.utc)
 
     reasoning: list[str] = []
     associations: list[TrackAssociation] = []
