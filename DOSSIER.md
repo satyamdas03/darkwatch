@@ -168,8 +168,10 @@ darkwatch/
 - [x] **VH polarization experiment**: processed VH tiles for the July 11 scene. VH detects the same physical object as VV but with much higher confidence (0.82 vs 0.50). The canonical `contacts.json` now uses the combined VV+VH result with automatic deduplication, retaining the highest-confidence detection (VH, conf 0.82).
 - [x] **Contact deduplication added to detector**: `darkwatch/detect/detector.py` now merges contacts within 100 m (haversine) of each other, keeping the highest-confidence contact. This removes duplicate detections across overlapping tiles.
 - [x] **Polarization filtering added**: `scripts/detect_tiles.py` now accepts `--pol vv,vh` to process only selected polarizations.
-- [x] **Inference run on 2024-07-11 scene**: 1 unique contact after deduplication at ~(-120.7310, 34.6107), estimated size ~214 m × 167 m, confidence 0.82 (VH).
+- [x] **Contact visualization added**: `scripts/visualize_contact.py` produces full-tile context and zoomed evidence PNGs for each contact.
+- [x] **Inference run on 2024-07-11 scene**: 1 unique contact after deduplication at ~(-120.7310, 34.6107), estimated size ~214 m × 167 m, confidence 0.82 (VH). Evidence image saved to `notebooks/contact_viz/`.
 - [x] **Key finding:** SSDD-trained YOLOv8n has low recall on real Sentinel-1 GRD — a known cross-domain gap. The preprocessing fix recovered the single visible contact, but the scene contains far fewer detectable ships than expected channel traffic. Detector improvement is a Phase 2 follow-up, not a Phase 3 blocker.
+- [x] Unit tests pass (`pytest tests/ -q` → 13 passed).
 - [x] **Phase 3 Fusion & Attribution scaffold implemented** while NOAA AIS daily zip downloads:
   - `darkwatch/fusion/ais.py` — `AISTrack` dataclass with interpolation and GPS uncertainty model.
   - `darkwatch/fusion/associate.py` — `ContactVerdict`, `TrackAssociation`, `associate_contact()` / `associate_all_contacts()`; produces CLEAR / DARK / ARTIFACT / REVIEW verdicts with component probabilities.
@@ -383,6 +385,8 @@ darkwatch/
 - **Key finding:** VH polarization gives a much stronger, more confident detection for this contact. The location offset between VV and VH is ~21 m (within geolocation uncertainty). No additional vessels were found in VH, confirming the scene is genuinely sparse rather than a VV-specific detection failure.
 - Added contact **deduplication** to `darkwatch/detect/detector.py`: contacts within 100 m (haversine) are merged, keeping the highest-confidence detection. This removes duplicates across overlapping tiles.
 - Added `--pol` polarization filter to `scripts/detect_tiles.py` so users can run VV, VH, or both.
+- Added `scripts/visualize_contact.py` to generate full-tile context and zoomed evidence PNGs for each contact; produced `notebooks/contact_viz/S1A_IW_GRDH_1SDV_20240711T140858_20240711T140923_054714_06A94E_9466_vh_c3314_r10814_det0000{_zoom}.png`.
+- Added `tests/test_detector.py` covering haversine distance and contact deduplication. Total tests now **13 passed**.
 - Updated `README.md` and `DOSSIER.md` §13 Quick Commands to recommend `--pol vv,vh` and explain automatic deduplication.
 - Canonical contacts file is now `data/processed/detections_20240711/contacts.json` (1 contact, VH, conf 0.82). VV-only and VH-only outputs preserved in `data/processed/detections_20240711_vvonly/` and `data/processed/detections_20240711_vh/` for comparison.
 - **Next action:** same as before — wait for NOAA AIS download, then run `fetch_ais.py` + `fuse_contacts.py` to produce the first real dark-vessel attribution.
@@ -454,6 +458,12 @@ python scripts/fetch_ais.py --date 2024-07-11 \
   --bbox "-120.8,34.3,-119.8,34.7" \
   --center-time "2024-07-11T14:09:10Z" \
   --time-window-minutes 60
+
+# Visualize contacts on source tiles (full + zoomed evidence PNGs)
+python scripts/visualize_contact.py \
+  --contacts data/processed/detections_20240711/contacts.json \
+  --manifest data/processed/s1a_20240711_channel/manifest.json \
+  --output-dir notebooks/contact_viz
 
 # Fuse SAR contacts with AIS tracks to produce dark-vessel verdicts
 python scripts/fuse_contacts.py \

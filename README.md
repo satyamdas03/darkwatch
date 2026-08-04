@@ -38,6 +38,12 @@ python scripts/fetch_ais.py --date 2024-07-11 \
   --center-time "2024-07-11T14:09:10Z" \
   --time-window-minutes 60
 
+# Visualize contacts on source tiles (full + zoomed evidence PNGs)
+python scripts/visualize_contact.py \
+  --contacts data/processed/detections_YYYYMMDD/contacts.json \
+  --manifest data/processed/s1a_YYYYMMDD_channel/manifest.json \
+  --output-dir notebooks/contact_viz
+
 # Fuse SAR contacts with AIS tracks to produce dark-vessel verdicts
 python scripts/fuse_contacts.py \
   --contacts data/processed/detections_YYYYMMDD/contacts.json \
