@@ -18,7 +18,7 @@
 | **Start Date** | 2026-08-04 |
 | **Last Updated** | 2026-08-04 (DARK verdict refined to p_dark=0.73/p_review=0.24; nearest AIS 12.7 km away; human-readable fusion report generated) |
 | **Current Branch** | main |
-| **Git Remote** | Local only — create `satyamdas03/darkwatch` on GitHub and push when ready |
+| **Git Remote** | `https://github.com/satyamdas03/darkwatch` (public, pushed 2026-08-04) |
 | **Lead Engineer** | Bull (Claude Code agent) |
 | **Founder** | Satyam Das — AI/ML engineer |
 | **Compute** | NVIDIA RTX 5060, 8 GB VRAM, local Windows machine |
@@ -190,6 +190,8 @@ darkwatch/
 - [x] **`scripts/fuse_contacts.py` now writes `summary.json`** alongside `verdicts.json` for run-level metadata.
 - [x] **Reproducible Markdown report generator added:** `scripts/fusion_report.py` consumes `contacts.json`, the clipped AIS CSV, `verdicts.json`, and `summary.json` to produce a human-readable fusion report. Used to regenerate `notebooks/fusion_20240711_report.md`.
 - [x] **Human-readable fusion report generated:** `notebooks/fusion_20240711_report.md` summarizes the verdict, all 9 MMSIs in the theater, and interpretation caveats.
+- [x] **Killer public README written:** `README.md` rewritten with badges, Mermaid pipeline, first-real-result showcase, quickstart, architecture, roadmap, contribution guide, and MIT license.
+- [x] **MIT `LICENSE` added** for community use.
 - [x] Unit tests pass (`pytest tests/ -q` → 14 passed).
 
 ### 6.1 Test Theater — Final Choice
@@ -438,6 +440,13 @@ darkwatch/
 - **Files changed:** `darkwatch/fusion/associate.py`, `scripts/fuse_contacts.py`, `tests/test_fusion.py`, `DOSSIER.md`, `notebooks/fusion_20240711_report.md`.
 - **Tests:** 14 passed.
 - **Next action:** add static-object exclusion (oil platforms / Channel Islands rock locations) and run a second, busier Sentinel-1 scene to collect CLEAR matches for calibration.
+
+### 2026-08-04 — Session #1 (continued): public GitHub repo + killer README + MIT license
+- Rewrote `README.md` as a community-facing landing page with badges, Mermaid pipeline diagram, first-real-result showcase, quickstart, architecture, roadmap, contributing guide, and citation block.
+- Added MIT `LICENSE` so the project is freely reusable.
+- Created public GitHub repository `satyamdas03/darkwatch` and pushed the full codebase (excluding `data/`, `models/`, `.env`, and base weights per `.gitignore`).
+- Updated `DOSSIER.md` project identity with the public remote URL.
+- **Next action:** create a GitHub profile README repo (`satyamdas03/satyamdas03`) based on deep-dive of public repos and LinkedIn/web research.
 
 ---
 

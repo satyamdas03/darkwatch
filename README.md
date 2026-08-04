@@ -1,68 +1,264 @@
-# Darkwatch
+# Darkwatch 🛰️🚢
 
-A maritime surveillance system that detects vessels that have deliberately switched off their AIS transponders, by fusing free Sentinel-1 SAR imagery with AIS broadcasts and producing calibrated, auditable dark-vessel verdicts.
+> **A radar contact with no transponder is either noise, a rig, a mismatch — or a ship that chose to disappear. Darkwatch decides which, and says how sure it is.**
 
-> **For the complete living project state, read [`DOSSIER.md`](DOSSIER.md) first.**
+<p align="center">
+  <a href="https://www.python.org/downloads/"><img src="https://img.shields.io/badge/Python-3.11%2B-blue?logo=python&logoColor=white" alt="Python 3.11+"></a>
+  <a href="https://pytorch.org"><img src="https://img.shields.io/badge/PyTorch-2.11%2B-EE4C2C?logo=pytorch&logoColor=white" alt="PyTorch"></a>
+  <img src="https://img.shields.io/badge/Sentinel--1-Open-green" alt="Sentinel-1 Open">
+  <img src="https://img.shields.io/badge/NOAA%20AIS-Public-blue" alt="NOAA AIS Public">
+  <a href="https://github.com/satyamdas03/darkwatch"><img src="https://img.shields.io/github/stars/satyamdas03/darkwatch?style=social" alt="GitHub stars"></a>
+</p>
 
-## Quick start
+<p align="center">
+  <b>Open-source maritime dark-vessel detection from Sentinel-1 SAR + AIS.</b><br>
+  Calibrated probability · Auditable evidence · Consumer-GPU friendly
+</p>
+
+---
+
+## 📡 Why Darkwatch?
+
+Illegal fishing fleets, sanctions evaders, and smugglers routinely **switch off their AIS transponders** and vanish from the cooperative tracking picture. Sentinel-1 SAR pierces cloud, darkness, and non-cooperation to detect metal-on-water anywhere on Earth — and the data is **free and open**.
+
+But a radar blip with no AIS match is **not automatically a dark vessel**. It could be:
+
+- a wave artifact or wind streak,
+- a fixed oil platform, rig, or small island,
+- an innocent AIS dropout or coverage gap.
+
+Darkwatch's core contribution is **calibrated probabilistic attribution**: for every SAR contact, it computes an honest probability that the contact is a deliberately dark vessel, and surfaces the weakest link in the evidence so humans can act with justified confidence.
+
+This is both a real-world surveillance system and a research problem in probabilistic inference — and both live in **Phase 3**.
+
+---
+
+## 🎯 What Makes Darkwatch Different?
+
+| Feature | Typical SAR-AIS pipeline | Darkwatch |
+|---|---|---|
+| Match logic | Nearest-neighbor join | **Gaussian likelihood + softmax normalization** over all nearby tracks |
+| Uncertainty | Binary match / no-match | **Four-component probabilities**: `CLEAR`, `DARK`, `ARTIFACT`, `REVIEW` |
+| Calibration | None | Explicit **coverage-gap** adjustment when no AIS exists within 2× the gate |
+| Evidence | Silent | Every verdict carries a **reasoning trail** and nearest-track metadata |
+| Cost | Enterprise AIS feeds + cloud GPUs | Free/open data + **single consumer GPU** (RTX 5060 8 GB) |
+
+---
+
+## 🏗️ Pipeline
+
+```mermaid
+flowchart LR
+    S1["S1 SAR Ingestion & Prep"] --> DET["Vessel Detection"]
+    DET --> FUS["Fusion & Attribution"]
+    FUS --> BEH["Behavior & Intent"]
+    BEH --> ALT["Alert & Evidence"]
+```
+
+1. **S1 SAR Ingestion & Prep** — download Sentinel-1 GRD, calibrate to sigma-nought, mask land with Natural Earth polygons, tile into georeferenced chips.
+2. **Vessel Detection** — fine-tuned YOLOv8n detects vessel-sized contacts; VV+VH deduplication keeps the best detection.
+3. **Fusion & Attribution** — interpolate AIS tracks to SAR time, compute association likelihoods, and emit calibrated `CLEAR / DARK / ARTIFACT / REVIEW` verdicts.
+4. **Behavior & Intent** *(Phase 4)* — zone overlays, persistence tracking, rendezvous detection.
+5. **Alert & Evidence** *(Phase 5)* — ranked dossiers with imagery, reasoning, and confidence.
+
+---
+
+## 🚨 First Real Result — 2024-07-11 Santa Barbara Channel
+
+On the very first real run, Darkwatch found **one detectable vessel** and classified it as a **DARK candidate**:
+
+```json
+{
+  "contact_id": "S1A_IW_GRDH_1SDV_20240711T140858_20240711T140923_054714_06A94E_9466_vh_c3314_r10814_det0000",
+  "verdict": "DARK",
+  "p_artifact": 0.0268,
+  "p_clear": 0.0,
+  "p_dark": 0.7299,
+  "p_review": 0.2433,
+  "nearest_association": {
+    "mmsi": 367726390,
+    "vessel_name": "BERNARDINE C",
+    "distance_m": 12710.2,
+    "interpolated_lon": -120.60969,
+    "interpolated_lat": 34.55505
+  },
+  "reasoning": [
+    "No AIS track within gate radius.",
+    "No AIS tracks within 2x gate radius; reducing dark confidence due to possible coverage gap.",
+    "No AIS match within gate; contact is candidate dark vessel if real."
+  ]
+}
+```
+
+The nearest cooperative vessel, **BERNARDINE C**, was stationary/moored **12.7 km away** — too far to explain the contact. Because no AIS track exists within 4 km, the model moved ~24% of its belief from `DARK` to `REVIEW`, giving a more honest uncertainty estimate.
+
+Read the full human-readable report: [`notebooks/fusion_20240711_report.md`](notebooks/fusion_20240711_report.md).
+
+---
+
+## 🚀 Quick Start
 
 ```bash
-# Run tests
+# Clone
+git clone https://github.com/satyamdas03/darkwatch.git
+cd darkwatch
+
+# Install (use a virtualenv)
+pip install -e ".[dev]"
+
+# Run the test suite
 python -m pytest tests/ -q
 
-# Search and download a Sentinel-1 scene over the Santa Barbara Channel
+# 1. Search and download a Sentinel-1 scene over the Santa Barbara Channel
 python scripts/fetch_first_scene.py --start 2024-07-01 --end 2024-07-12 --download
 
-# Pick the pass with the most open ocean
+# 2. Pick the pass with the most open ocean
 python scripts/pick_ocean_scene.py --start 2024-07-01 --end 2024-07-31
 
-# Prep a scene into analysis-ready tiles
-python scripts/prep_s1.py "data/raw/s1/S1A_...SAFE" --output-dir data/processed/s1a_YYYYMMDD_channel --bbox "-120.8,34.3,-119.8,34.7"
+# 3. Prep the scene into calibrated, land-masked tiles
+python scripts/prep_s1.py "data/raw/s1/S1A_...SAFE" \
+  --output-dir data/processed/s1a_20240711_channel \
+  --bbox "-120.8,34.3,-119.8,34.7" \
+  --pol vv,vh
 
-# Convert SSDD to YOLO format and train the detector
-python scripts/prepare_ssdd.py
-python scripts/train_detector.py --epochs 30 --batch 4
-
-# Detect vessels in tiles (dB -> uint8 contrast stretch is required for the SSDD-trained YOLO model)
-# Use both VV and VH; overlapping detections are deduplicated by haversine distance.
+# 4. Detect vessels (dB -> uint8 contrast stretch is required for SSDD-trained YOLO)
 python scripts/detect_tiles.py \
-  --manifest data/processed/s1a_YYYYMMDD_channel/manifest.json \
+  --manifest data/processed/s1a_20240711_channel/manifest.json \
   --model models/detector_runs/darkwatch_yolov8n_ssdd/weights/best.pt \
   --db-lo -25 --db-hi -5 \
   --pol vv,vh \
-  --output-dir data/processed/detections_YYYYMMDD
+  --output-dir data/processed/detections_20240711
 
-# Fetch NOAA Marine Cadastre AIS for the acquisition date
+# 5. Fetch NOAA Marine Cadastre AIS for the acquisition date
 python scripts/fetch_ais.py --date 2024-07-11 \
   --bbox "-120.8,34.3,-119.8,34.7" \
   --center-time "2024-07-11T14:09:10Z" \
   --time-window-minutes 60
 
-# Visualize contacts on source tiles (full + zoomed evidence PNGs)
-python scripts/visualize_contact.py \
-  --contacts data/processed/detections_YYYYMMDD/contacts.json \
-  --manifest data/processed/s1a_YYYYMMDD_channel/manifest.json \
-  --output-dir notebooks/contact_viz
-
-# Fuse SAR contacts with AIS tracks to produce dark-vessel verdicts
+# 6. Fuse SAR contacts with AIS tracks
 python scripts/fuse_contacts.py \
-  --contacts data/processed/detections_YYYYMMDD/contacts.json \
+  --contacts data/processed/detections_20240711/contacts.json \
   --ais data/external/ais/ais_2024-07-11_clipped.csv \
-  --output-dir data/processed/fusion_YYYYMMDD
+  --output-dir data/processed/fusion_20240711
+
+# 7. Generate the human-readable Markdown report
+python scripts/fusion_report.py \
+  --contacts data/processed/detections_20240711/contacts.json \
+  --ais data/external/ais/ais_2024-07-11_clipped.csv \
+  --verdicts data/processed/fusion_20240711/verdicts.json \
+  --summary data/processed/fusion_20240711/summary.json \
+  --output notebooks/fusion_20240711_report.md
 ```
 
-## Architecture
+> **Note:** Copernicus Data Space credentials go in `.env` (see `scripts/fetch_first_scene.py`). All downloaded scenes, models, and data are excluded from git via `.gitignore`.
 
-Five stages from raw radar to an auditable accusation:
+---
 
-1. **SAR Ingestion & Prep** — Sentinel-1 GRD → calibrated, land-masked, georeferenced tiles.
-2. **Vessel Detection** — fine-tuned YOLO detector emits candidate contacts.
-3. **Fusion & Attribution** — probabilistic match of SAR contacts to AIS tracks; calibrate `P(dark)`.
-4. **Behavior & Intent** — zone overlays, persistence, rendezvous detection.
-5. **Alert & Evidence** — ranked dossiers with imagery, reasoning, and confidence.
+## 📁 Repository Layout
 
-The visual reference is [`darkwatch-architecture.html`](darkwatch-architecture.html).
+```text
+darkwatch/
+├── README.md                  # You are here
+├── DOSSIER.md                 # Living project source of truth
+├── LICENSE                    # MIT
+├── darkwatch-architecture.html # Visual architecture reference
+├── pyproject.toml             # Python package + dependencies
+├── darkwatch/                 # Core Python package
+│   ├── adapters/              # Swappable data-source adapters
+│   ├── s1_prep/               # Sentinel-1 ingestion & prep
+│   ├── detect/                # Vessel detector + contacts
+│   ├── fusion/                # Probabilistic SAR-to-AIS attribution
+│   ├── behavior/              # Phase 4: context & prioritization
+│   └── alerts/                # Phase 5: evidence dossiers
+├── scripts/                   # CLI utilities for each pipeline stage
+├── tests/                     # pytest suite
+├── notebooks/                 # Validation images + fusion reports
+└── data/                      # Downloads & processed outputs (gitignored)
+```
 
-## License & data
+---
 
-Sentinel-1 SAR is fully open. NOAA Marine Cadastre AIS is public US-government data. Open SAR ship-detection training datasets (SSDD, HRSID, LS-SSDD) should be verified individually before training or redistribution.
+## 🛠️ Tech Stack
+
+- **Python 3.11+** — target runtime
+- **PyTorch 2.11 + CUDA 12.8** — detector training/inference on RTX 5060
+- **Ultralytics YOLOv8** — SAR vessel detector
+- **rasterio + geopandas + shapely + pyproj** — geospatial / SAR prep
+- **scipy** — barycentric SAR geocoding
+- **pandas + numpy** — AIS track interpolation and probability math
+- **pytest** — testing
+- **Sentinel-1 (Copernicus Data Space)** — open SAR data
+- **NOAA Marine Cadastre AIS** — public US-government broadcast data
+- **Natural Earth** — public-domain land polygons
+
+---
+
+## 📊 Roadmap
+
+| Phase | Goal | Status |
+|---|---|---|
+| 0 | Recon & first real SAR on screen | ✅ |
+| 1 | Automated SAR ingestion & prep | ✅ |
+| 2 | Vessel detection baseline | ✅ (domain-gap follow-up tracked) |
+| 3 | **Fusion & Attribution** | ✅ Baseline real verdict produced |
+| 4 | Behavior & intent (zones, persistence, rendezvous) | ⏳ |
+| 5 | Alert & evidence dossiers | ⏳ |
+
+**Next priorities:**
+1. Static-object exclusion (oil platforms, known rigs, small islands).
+2. Run a second, busier Sentinel-1 scene to collect `CLEAR` matches for calibration.
+3. Empirical calibration: ensure `p_dark = 0.73` actually means ~73% of similar cases are dark.
+4. Larger/open SAR ship dataset fine-tuning to close SSDD→GRD domain gap.
+
+---
+
+## 📚 Data & Licensing
+
+- **Sentinel-1 SAR** is fully open under the Copernicus free and open data policy.
+- **NOAA Marine Cadastre AIS** is public US-government data.
+- **Natural Earth** `ne_50m_land` is public domain.
+- Open SAR ship-detection datasets (**SSDD**, **HRSID**, **LS-SSDD-v1.0**) should be verified individually before training or redistribution.
+
+---
+
+## 🤝 Contributing
+
+Contributions that improve **calibration, attribution honesty, or data accessibility** are especially welcome:
+
+- Better detector backbones or GRD-domain fine-tuning recipes.
+- Static-object exclusion datasets for the Santa Barbara Channel and beyond.
+- Additional AIS adapters (Global Fishing Watch, terrestrial AIS, etc.).
+- Calibration studies on real-world ground-truthable cases.
+
+Please open an issue or PR. For the full project state and rationale, read [`DOSSIER.md`](DOSSIER.md) first.
+
+---
+
+## 📖 Citation
+
+If you use Darkwatch in research, please cite the repository and the open data sources:
+
+```bibtex
+@software{darkwatch2026,
+  author = {Satyam Das},
+  title = {Darkwatch: Open-Source Dark-Vessel Detection from Sentinel-1 SAR and AIS},
+  url = {https://github.com/satyamdas03/darkwatch},
+  year = {2026}
+}
+```
+
+---
+
+## 🧑‍💻 Author
+
+Built by **Satyam Das** with the help of **Bull** (Claude Code agent).
+
+- GitHub: [@satyamdas03](https://github.com/satyamdas03)
+- LinkedIn: [Satyam Das](https://linkedin.com/in/satyam-das-36040a24b)
+- Email: satyamdas03@gmail.com
+
+If Darkwatch helps your research or operation, please ⭐ the repo and share what you build.
+
+---
+
+*Darkwatch is a research/engineering prototype. Verdicts are candidate flags for human review, not legal accusations.*
