@@ -1,0 +1,402 @@
+# Darkwatch — Project Dossier
+
+> **Purpose:** Single source of truth for the entire Darkwatch project.  
+> **Rule:** Read this file first on every fresh session. Append new context whenever the user says **POINTBREAK**.  
+> **Source of truth:** This dossier overrides any summary or memory. The accompanying visual reference is `darkwatch-architecture.html`.
+
+---
+
+## 1. Project Identity
+
+| Field | Value |
+|---|---|
+| **Name** | Darkwatch |
+| **Tagline** | A radar contact with no transponder is either noise, a rig, a mismatch — or a ship that chose to disappear. Darkwatch decides which, and says how sure it is. |
+| **Goal** | Build a maritime surveillance system that detects vessels that have deliberately switched off AIS, by fusing free Sentinel-1 SAR imagery with AIS broadcasts, and produces calibrated, auditable dark-vessel verdicts. |
+| **Mode** | Impact-first, funding-agnostic, single-consumer-GPU research/engineering build. |
+| **Status** | Phase 1 — SAR Ingestion & Prep COMPLETE; starting Phase 2 (vessel detection) |
+| **Start Date** | 2026-08-04 |
+| **Last Updated** | 2026-08-04 (recovery deep-dive + dossier refresh) |
+| **Current Branch** | main (darkwatch directory is currently untracked in parent repo at `C:/Users/point`)|
+| **Lead Engineer** | Bull (Claude Code agent) |
+| **Founder** | Satyam Das — AI/ML engineer |
+| **Compute** | NVIDIA RTX 5060, 8 GB VRAM, local Windows machine |
+
+---
+
+## 2. One-Line Summary
+
+Darkwatch ingests free Sentinel-1 SAR satellite imagery, detects every vessel-sized radar contact, cross-references those contacts against cooperative AIS broadcasts for the same place and time, and outputs a short ranked list of candidate dark vessels — each with a calibrated probability and an auditable evidence trail.
+
+---
+
+## 3. Vision & Why
+
+The vessels doing the most harm at sea — illegal fishing fleets, sanctions evaders, smugglers — simply switch off their AIS transponders and vanish from the cooperative tracking picture. Sentinel-1 SAR sees through cloud and darkness and detects metal-on-water regardless of cooperation. The detection half of the problem is mature; the decision half is not. A radar blip with no AIS match is **not automatically** a dark vessel — it could be a wave artifact, a fixed rig, or an innocent AIS dropout.
+
+Darkwatch's real contribution is **calibrated probabilistic attribution**: assigning each unmatched SAR contact an honest probability that it is a deliberately dark vessel, and surfacing the weakest link in every verdict so a human can act with justified confidence.
+
+This is simultaneously a real-world system and a deep probabilistic-inference research problem. Both goals live in Phase 3.
+
+---
+
+## 4. Tech Stack
+
+### Confirmed
+- **Language:** Python 3.14 (current system Python); target runtime Python 3.11+
+- **Geospatial / SAR prep:** rasterio 1.5.0, geopandas 1.1.4, xarray 2026.7.0, pyproj 3.7.2, shapely 2.1.2, pyogrio 0.13.0, defusedxml 0.7.1
+- **ML detector:** Ultralytics YOLOv8 (8.4.115), PyTorch 2.11.0+cu128 with CUDA 12.8 on RTX 5060
+- **Data access adapters:**
+  - SAR: Copernicus Data Space Ecosystem OData API (verified)
+  - AIS: NOAA Marine Cadastre AccessAIS + Azure Blob GeoParquet (verified)
+  - Zones / behavior: Global Fishing Watch API, public MPA/EEZ datasets (TBD)
+- **Database:** TBD — likely GeoParquet / SQLite-Spatialite for local prototype
+- **Visualization:** matplotlib 3.10.8, folium 0.20.0
+- **Workflow / orchestration:** `scripts/` first; evolving to `darkwatch` CLI
+- **Compute:** NVIDIA RTX 5060 Laptop GPU, 8 GB VRAM, CUDA 12.8, Windows 11
+
+### Open training datasets to verify
+| Dataset | Size | Note | License status |
+|---|---|---|---|
+| SSDD | ~1,160 SAR images | Original SAR ship detection dataset | Verify before training |
+| HRSID | ~5,600 images, ~17k ship instances | Higher resolution | Verify before training |
+| LS-SSDD-v1.0 | Large-scene Sentinel-1, small-ship focus | Labelled using AIS — fusion hint + validation path | Verify before training |
+
+---
+
+## 5. Architecture
+
+Five stages, raw radar → auditable accusation. The easy parts are the two ends; the research value is in the middle.
+
+### 5.1 High-Level Pipeline
+
+```text
+┌──────────────┐    ┌──────────────┐    ┌──────────────────┐    ┌──────────────┐    ┌──────────────┐
+│   S1 SAR     │ →  │    S2        │ →  │   S3 Fusion &    │ →  │    S4        │ →  │    S5        │
+│  Ingestion   │    │ Vessel       │    │   Attribution    │    │ Behavior &   │    │ Alert &      │
+│    & Prep    │    │ Detection    │    │   (THE CORE)     │    │ Prioritization│   │ Evidence     │
+└──────────────┘    └──────────────┘    └──────────────────┘    └──────────────┘    └──────────────┘
+   raw scenes          candidate           P(dark|contact,AIS)      ranked alerts      auditable
+   → ocean tiles       contacts            explain-away step          with context       dossiers
+```
+
+### 5.2 Stage Detail
+
+| Stage | Name | Output | Key non-negotiable |
+|---|---|---|---|
+| **S1** | SAR Ingestion & Prep | Analysis-ready ocean tiles with geo-coordinates preserved | Swappable data adapter; land / infrastructure masked |
+| **S2** | Vessel Detection | Candidate contacts: lat/lon, size, timestamp, detection confidence | Fine-tune existing baseline; don't invent a detector |
+| **S3** | Fusion & Attribution ★ | Each contact labelled matched / dark / artifact / review with calibrated probability | **Calibration is success**; honest uncertainty |
+| **S4** | Behavior & Intent | Ranked alerts with context (zones, persistence, rendezvous) | Priority scoring; human sees only what matters |
+| **S5** | Alert & Evidence | Contact dossiers: imagery + reasoning + confidence + alternatives ruled out | Evidence trail is the product |
+
+### 5.3 Core Research Problem (S3)
+
+A SAR contact with no AIS match is **observationally identical** to:
+- a genuine dark vessel,
+- an innocent AIS dropout,
+- a radar false contact (wave clutter, azimuth ambiguity, wind streak),
+- a fixed object (rig, small island, platform).
+
+The task is **calibrated probabilistic attribution**:
+- For every SAR contact, compute `P(contact = dark vessel | SAR, AIS, context)`.
+- Interpolate AIS tracks to the SAR capture instant.
+- Build probabilistic association `P(contact = track)`, not a nearest-neighbor join.
+- Rule out non-vessel and innocent-gap explanations before calling anything dark.
+- **Calibrate** on ground-truthable cases: when the system says p=0.9, ~90% of those cases should be dark.
+
+### 5.4 Directory Structure
+
+```text
+darkwatch/
+├── README.md
+├── DOSSIER.md
+├── darkwatch-architecture.html
+├── pyproject.toml
+├── scripts/             # phase-by-phase utility scripts
+├── data/
+│   ├── raw/s1/          # downloaded Sentinel-1 scenes (.SAFE + zip)
+│   ├── raw/ais/         # downloaded AIS feeds
+│   ├── processed/       # calibrated, masked, tiled outputs
+│   └── external/        # zone shapefiles, rig locations, coastlines
+├── darkwatch/
+│   ├── __init__.py
+│   ├── adapters/        # swappable data source adapters
+│   │   └── copernicus_adapter.py
+│   ├── s1_prep/         # S1 ingestion & preprocessing
+│   ├── detect/          # vessel detection model + inference
+│   ├── fusion/          # S3 probabilistic attribution
+│   ├── behavior/        # S4 context & prioritization
+│   ├── alerts/          # S5 dossier generation
+│   └── models/          # trained weights / configs
+├── notebooks/           # exploratory / validation outputs
+└── tests/               # unit + integration tests
+```
+
+---
+
+## 6. Current State
+
+- [x] Project spec and architecture HTML exist in repo.
+- [x] Copernicus Data Space Ecosystem access path verified and working with live credentials (stored in `.env`, gitignored).
+- [x] NOAA Marine Cadastre AIS access path verified.
+- [x] Test theater chosen: **Santa Barbara Channel / Channel Islands, CA**.
+- [x] Python geospatial + ML environment installed and verified on RTX 5060 (CUDA 12.8).
+- [x] Multiple real Sentinel-1 GRD scenes downloaded and extracted.
+- [x] Automated **Phase 1 SAR Ingestion & Prep pipeline** complete and validated:
+  - `darkwatch/s1_prep/reader.py` — parses `.SAFE`, locates measurement TIFFs, calibration/annotation XMLs.
+  - `darkwatch/s1_prep/calibrate.py` — sigma-nought calibration to dB.
+  - `darkwatch/s1_prep/geocode.py` — barycentric lat/lon ↔ line/pixel via `scipy LinearNDInterpolator`.
+  - `darkwatch/s1_prep/land_mask.py` — public-domain Natural Earth `ne_50m_land` polygons (exact land mask, not buffered coastline).
+  - `darkwatch/s1_prep/tiler.py` — 1024×1024 overlapping chips with GeoTIFF + JSON sidecar (water fraction + corner GCPs).
+  - `darkwatch/s1_prep/pipeline.py` — end-to-end `prep_scene()` with CLI.
+- [x] Scene scoring script (`scripts/pick_ocean_scene.py`) ranks acquisitions by open-water fraction so we always pick a usable pass.
+- [x] Mosaic validation (`notebooks/phase1_channel_mosaic_v2.png`) confirms clean ocean tiles with no land artifacts.
+- [x] **Phase 2 detector scaffolding complete** before laptop crash:
+  - `darkwatch/detect/contact.py` — `Contact` dataclass with geo/size/confidence metadata.
+  - `darkwatch/detect/dataset.py` — COCO → YOLO converter for SSDD.
+  - `darkwatch/detect/detector.py` — `VesselDetector` wrapper around Ultralytics YOLO; `detect_tiles()` runs inference on Darkwatch tiles and emits geo-located `Contact` objects.
+  - `darkwatch/detect/__init__.py` — public exports wired.
+  - `scripts/prepare_ssdd.py` — CLI wrapper for dataset conversion.
+  - `scripts/train_detector.py` — CLI wrapper for fine-tuning.
+  - `scripts/detect_tiles.py` — CLI wrapper for inference on prepared tiles.
+- [x] SSDD converted to YOLO format: 1,160 images / 1,160 label files (train + val) at `data/processed/ssdd_yolo/`.
+- [x] YOLOv8n base weights downloaded to repo root (`yolov8n.pt`).
+- [ ] **Detector training was interrupted** by the laptop crash at 2026-08-04 ~12:26. `models/detector_runs/darkwatch_yolov8n_ssdd_v1/args.yaml` exists but `weights/` is empty. Training must be re-run.
+- [x] Unit tests pass (`pytest tests/ -q` → 4 passed).
+
+### 6.1 Test Theater — Final Choice
+
+| Field | Value |
+|---|---|
+| **Region** | Santa Barbara Channel / Channel Islands, California |
+| **Full channel bbox** | `-120.5, 33.8, -119.0, 34.6` (search/acquisition bbox) |
+| **Operational bbox (current scene)** | `-120.8, 34.3, -119.8, 34.7` (western Santa Barbara Channel, open water) |
+| **Operational scene** | `S1A_IW_GRDH_1SDV_20240711T140858_20240711T140923_054714_06A94E_9466.SAFE` |
+| **Scene coverage** | lat 34.03–35.93 N, lon -123.21 to -120.14 W |
+| **Scene water fraction** | ~84.85% open ocean per footprint sampling |
+| **Justification** | Western side of the channel is open water with consistent commercial shipping and fishing traffic; NOAA AIS coverage; manageable coastline/island masking. |
+
+**Note:** Not every Sentinel-1 pass covers the same sub-region. The first acquired pass (2024-07-01) was angled inland and contained no usable open ocean for this theater. A scene-scoring step now picks the pass with the highest open-water fraction. The adapter design lets us search/acquire additional scenes trivially.
+
+### 6.2 Phase 0 Deliverables
+
+| Deliverable | Location | Status |
+|---|---|---|
+| CDSE adapter | `darkwatch/adapters/copernicus_adapter.py` | ✅ Working |
+| Scene search script | `scripts/fetch_first_scene.py` | ✅ Working |
+| Scene inspection script | `scripts/inspect_scene.py` | ✅ Working |
+| First downloaded scene | `data/raw/s1/S1A_IW_GRDH_1SDV_20240701T135228_...SAFE/` | ✅ Extracted |
+| Calibrated theater preview | `notebooks/phase0_santa_barbara_north.png` | ✅ Generated |
+| Geocoding method | Barycentric interpolation from Sentinel-1 geolocation grid via `scipy.interpolate.LinearNDInterpolator` | ✅ Verified |
+
+---
+
+## 7. Roadmap / Tasks
+
+| # | Phase | Goal | Status | Owner | Notes |
+|---|---|---|---|---|---|
+| 0 | **Recon & first light** | Get real SAR onto the screen; pick test theater | ✅ Complete | Bull | Copernicus + NOAA verified; first scene calibrated and viewed |
+| 1 | **SAR Ingestion & Prep (S1)** | Scenes → analysis-ready tiles, automatically | ✅ Complete | Bull | `prep_s1.py`; land-mask → tile pipeline validated on ocean scene |
+| 2 | **Vessel Detection (S2)** | Scene in, clean contacts out | 🚧 In Progress | Bull | Code complete; training interrupted by crash — must re-run |
+| 3 | **Fusion & Attribution (S3)** ★ | Calibrated dark-vessel attribution | ⏳ Pending | Bull | **Make-or-break phase** |
+| 4 | **Behavior & Intent (S4)** | Ranked alerts with context | ⏳ Pending | Bull | Use GFW + public zone data |
+| 5 | **Evidence Layer (S5)** | Auditable dossiers + validation | ⏳ Pending | Bull | Write up method |
+
+---
+
+## 8. Logistics Board
+
+| Item | Status | Note |
+|---|---|---|
+| SAR data | ✅ CLEAR | Sentinel-1 open, redistribution OK, API + S3 access. |
+| Employer overlap | ✅ CLEAR | Unrelated to founder's day job. |
+| Libraries & solvers | ✅ CLEAR | SAR + geospatial + ML stack permissively licensed. |
+| Compute | ✅ CLEAR | Detector fine-tunes on RTX 5060. |
+| AIS feeds | ⚠️ WATCH | Free NOAA raw AIS is enough to build & validate; live global AIS may cost. Adapter design absorbs it. |
+| Detector training sets | ⚠️ WATCH | Open datasets exist; confirm each license before training. |
+
+**No hard blockers currently known.**
+
+---
+
+## 9. Decisions & Rationale
+
+| Date | Decision | Context | Rationale |
+|---|---|---|---|
+| 2026-08-04 | Adopt dossier-driven context recovery | Stateless agent sessions | Reconstruct full project state on restart. |
+| 2026-08-04 | Impact-first, funding-agnostic scope | Founder's preference | Avoid commercialization/logistics friction; focus on real-world impact + technical excellence. |
+| 2026-08-04 | Use free Sentinel-1 SAR as core input | Open license + global archive | Removes the single biggest data licensing wall. |
+| 2026-08-04 | Build swappable data adapters everywhere | Prevent logistics headaches | One data source should never block the project. |
+| 2026-08-04 | Make S3 fusion the definition of success | Detection is solved; attribution is not | Calibration > raw detection accuracy. |
+| 2026-08-04 | Use YOLO-family detector on RTX 5060 | 8 GB VRAM constraint | Proven, lightweight, fine-tunable baseline. |
+| 2026-08-04 | Verified Copernicus OData API as current Sentinel-1 access | Web search + docs check 2026-08-04 | Catalogue at `catalogue.dataspace.copernicus.eu/odata/v1/Products`; download at `download.dataspace.copernicus.eu`; Keycloak auth. |
+| 2026-08-04 | Verified NOAA Marine Cadastre AIS access | Web search 2026-08-04 | AccessAIS clip-and-ship for custom CSV; GeoParquet bulk daily points and monthly tracks available via Azure Blob. |
+| 2026-08-04 | Propose Santa Barbara Channel as test theater | Dense Sentinel-1 + NOAA AIS overlap, commercial + fishing traffic, nearby MPA | Cleanest calibration theater; can pivot to Gulf or Chesapeake if needed. |
+| 2026-08-04 | Use Natural Earth `ne_50m_land` polygons for land masking | Buffered coastline linestrings leave inland land unmasked; exact land polygons exclude urban/mountain pixels correctly | Better mask quality; still public domain and globally available. |
+| 2026-08-04 | Score each candidate S1 pass by open-water footprint fraction before download | Some passes over the search bbox are angled inland and contain no usable ocean | Avoids wasting download/time on land-only scenes; pick best pass automatically. |
+| 2026-08-04 | Store CDSE credentials in `.env` and gitignore it | Credentials were passed via environment variables; `.env` keeps them local and uncommitted | Standard local-secret pattern; easy to rotate and safe from accidental commits. |
+| 2026-08-04 | Write GeoTIFF tiles with corner Ground Control Points (EPSG:4326) | SAR swath is not exactly affine in lat/lon; identity transform is not geo-referenced | Tiles load in GIS tools with correct approximate geo-location. |
+| 2026-08-04 | Create `README.md` pointing to `DOSSIER.md` as the source of truth | Dossier referenced a README that did not exist; README is the standard first file visitors see | Keeps README lightweight and current; DOSSIER remains the single source of truth. |
+| 2026-08-04 | Document git root discovery: repo root is `C:/Users/point`, whole `darkwatch/` directory is untracked | Fresh-session forensic check revealed no darkwatch commits and parent-repo status | Must be resolved before relying on git for state recovery. |
+
+---
+
+## 10. Blockers & Open Questions
+
+| Date | Blocker / Question | Impact | Owner |
+|---|---|---|---|
+| 2026-08-04 | ✅ RESOLVED — Copernicus access path confirmed | — | Bull |
+| 2026-08-04 | ✅ RESOLVED — NOAA Marine Cadastre path confirmed (AccessAIS + GeoParquet) | — | Bull |
+| 2026-08-04 | ✅ RESOLVED — Santa Barbara Channel / Channel Islands chosen as test theater | — | Bull |
+| 2026-08-04 | ✅ RESOLVED — Python 3.14 + geospatial stack + PyTorch CUDA 12.8 installed and verified | — | Bull |
+| 2026-08-04 | ✅ RESOLVED — First Sentinel-1 GRD scene downloaded, extracted, calibrated, and visualized | — | Bull |
+| 2026-08-04 | ✅ RESOLVED — Phase 1 automated S1 prep pipeline (read → calibrate → land-mask → tile) | — | Bull |
+| 2026-08-04 | ✅ RESOLVED — Land/coastline mask using Natural Earth `ne_50m_land` polygons | — | Bull |
+| 2026-08-04 | ✅ RESOLVED — Scene selection: score passes by open-water fraction to avoid land-only acquisitions | — | Bull |
+| 2026-08-04 | Which open SAR ship detection dataset has the most permissive license? | Medium — blocks S2 | Bull |
+| 2026-08-04 | Detector training run was interrupted by crash; `weights/` directory is empty | High — blocks S2 inference | Bull |
+| 2026-08-04 | Darkwatch directory is untracked in parent git repo rooted at `C:/Users/point` | Medium — risk of losing work; needs proper commit strategy | Bull |
+| 2026-08-04 | AIS data pull for the 2024-07-11 Santa Barbara Channel window | Medium — blocks S3 fusion validation | Bull |
+
+---
+
+## 11. Session Log
+
+> Append a new entry on every **POINTBREAK**.
+
+### 2026-08-04 — Session #1: Dossier creation + Phase 0 kickoff
+- Read `darkwatch-architecture.html` visual reference.
+- Created `DOSSIER.md` as the single living source of truth.
+- Seeded dossier with full project identity, vision, architecture, roadmap, and logistics board.
+- Verified Copernicus Data Space Ecosystem OData API endpoints and NOAA Marine Cadastre GeoParquet/AccessAIS paths.
+- Installed Python geospatial stack (rasterio, geopandas, xarray, pyproj, shapely, pyogrio) and verified PyTorch 2.11.0+cu128 on RTX 5060.
+- Created `pyproject.toml`, project skeleton, CDSE adapter (`darkwatch/adapters/copernicus_adapter.py`), and helper scripts (`scripts/fetch_first_scene.py`, `scripts/inspect_scene.py`).
+- Downloaded and extracted first Sentinel-1 GRD scene: `S1A_IW_GRDH_1SDV_20240701T135228_...SAFE`.
+- Built barycentric geocoding from the Sentinel-1 geolocation grid using `scipy.interpolate.LinearNDInterpolator`.
+- Calibrated VV backscatter to sigma-nought (dB) and produced theater crop preview (`notebooks/phase0_santa_barbara_north.png`).
+- **Phase 0 COMPLETE.** Next: build the automated S1 ingestion/prep pipeline (Phase 1).
+
+### 2026-08-04 — Session #1 POINTBREAK: Phase 0 locked, project state snapshotted
+- **POINTBREAK triggered.** Appending checkpoint of completed Phase 0 work and current open items.
+- Confirmed dossier now reflects: status = Phase 0 COMPLETE / Phase 1 starting; Santa Barbara Channel / Ventura operational bbox; all access paths verified; environment verified.
+- Open items carried into Phase 1: coastline mask source, CDSE `$value` vs `$zip` behavior (now handled by adapter), SAR ship detection dataset license verification.
+- Files on disk: `DOSSIER.md`, `darkwatch-architecture.html`, `pyproject.toml`, `darkwatch/` package skeleton, `scripts/`, `data/raw/s1/S1A_IW_GRDH_1SDV_20240701T135228_...SAFE/`, `notebooks/phase0_santa_barbara_north.png`.
+- **Next action:** Begin Phase 1 — SAR Ingestion & Prep pipeline (`fetch → calibrate → land-mask → tile`).
+
+### 2026-08-04 — Session #1 (continued): Phase 1 SAR Ingestion & Prep COMPLETE
+- **POINTBREAK triggered.** Appending Phase 1 completion state.
+- Built end-to-end S1 prep pipeline:
+  - `reader.py`: parse `.SAFE` structure, pick polarization measurement TIFF + calibration + annotation XMLs.
+  - `calibrate.py`: interpolate sampled sigma-nought calibration vectors to full image width, output dB.
+  - `geocode.py`: barycentric lat/lon ↔ line/pixel via `scipy.interpolate.LinearNDInterpolator`; `bbox_to_window` for theater crop.
+  - `land_mask.py`: public-domain Natural Earth `ne_50m_land` polygons; `compute_water_mask` with optional coastal buffer; `apply_water_mask`.
+  - `tiler.py`: 1024×1024 overlapping chips, JSON sidecar with corner coords / center / water fraction, GeoTIFF with WGS84 GCPs.
+  - `pipeline.py`: CLI `prep_s1.py` and `prep_scene()` orchestration; default theater bbox `-120.8,34.3,-119.8,34.7`.
+- Fixed CDSE download path: always use `$value` endpoint (archive `$zip` returns 404 after ~1 month).
+- Moved CDSE credentials from command-line env vars into `.env` (gitignored); scripts load via `python-dotenv`.
+- Discovered and fixed land-mask bug: the first pass (2024-07-01) had no usable open ocean because it was angled inland. Built `scripts/pick_ocean_scene.py` to score candidate passes by open-water fraction.
+- Downloaded and processed ocean-covered scene: `S1A_IW_GRDH_1SDV_20240711T140858_20240711T140923_054714_06A94E_9466.SAFE`.
+- Ran `prep_s1.py` on the ocean scene with bbox `-120.8,34.3,-119.8,34.7`; produced **12 analysis-ready ocean tiles** (water fraction 1.0 per tile).
+- Generated validation mosaic `notebooks/phase1_channel_mosaic_v2.png`; confirms clean ocean speckle, no land/urban artifacts.
+- **Phase 1 COMPLETE.** Next: Phase 2 — Vessel Detection (fine-tune a SAR ship detector on open datasets; verify licenses).
+
+### 2026-08-04 — Session recovery after laptop crash: full codebase deep-dive & dossier refresh
+- Laptop restarted on its own at ~12:26 while detector training was in progress. Session state lost; this is a full forensic reconstruction.
+- **Read every source file line by line** in `darkwatch/` (adapters, s1_prep, detect, alerts, behavior, fusion), `scripts/`, `tests/`, `pyproject.toml`, `.env`, `.gitignore`, `DOSSIER.md`, and `darkwatch-architecture.html`.
+- **Verified on-disk state:**
+  - Phase 0/1 deliverables intact: two `.SAFE` scenes, two processed tile sets (July 1 = 22 tiles, July 11 = 12 tiles), mosaic PNGs, unit tests passing.
+  - Phase 2 scaffolding complete but **training interrupted**: `darkwatch/detect/{contact,dataset,detector}.py`, `scripts/{prepare_ssdd,train_detector,detect_tiles}.py` all present; SSDD YOLO dataset has 1,160 images + labels; `models/detector_runs/darkwatch_yolov8n_ssdd_v1/weights/` is empty; only `args.yaml` exists.
+  - `yolov8n.pt` base weights present at repo root.
+  - No AIS data downloaded yet; no fusion/behavior/alerts implementation yet (empty module stubs).
+  - `README.md` was referenced in dossier but missing; created a minimal `README.md` pointing to `DOSSIER.md`.
+- **Git situation discovered:** the git repository root is `C:/Users/point`, so the entire `darkwatch/` directory appears as a single untracked entry (`?? ./`) under that parent repo. No darkwatch-specific commits exist yet. This is a medium-risk logistics issue to resolve.
+- **Updated `DOSSIER.md`** with current state, new blockers (interrupted training, untracked repo root), and this session log entry.
+- **Next action:** Re-run `python scripts/train_detector.py` to complete Phase 2 detector training; then run inference with `scripts/detect_tiles.py` on the July 11 tiles; then move to Phase 3 (AIS pull + probabilistic fusion).
+
+---
+
+## 12. Resources & Links
+
+### Verified Access Paths (as of 2026-08-04)
+
+#### SAR — Copernicus Data Space Ecosystem (CDSE)
+- **Portal:** https://dataspace.copernicus.eu/
+- **Catalogue search:** `https://catalogue.dataspace.copernicus.eu/odata/v1/Products`
+- **Product download (always use this):** `https://download.dataspace.copernicus.eu/odata/v1/Products(<UUID>)/$value`
+- **Compressed native download (zip, only valid ~1 month after publication — avoid for archive):** `https://download.dataspace.copernicus.eu/odata/v1/Products(<UUID>)/$zip`
+- **Auth endpoint (Keycloak):** `https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token`
+  - `client_id: cdse-public`, `grant_type: password`, username/password from registration.
+- **Product type for vessel detection:** `IW_GRDH_1S` (Interferometric Wide, Ground-Range Detected, High resolution; standard GRD).
+- **Docs:** https://documentation.dataspace.copernicus.eu/APIs/OData.html
+- **OData basics notebook:** https://documentation.dataspace.copernicus.eu/notebook-samples/geo/odata_basics.html
+- **License:** Sentinel-1 fully open, redistribution permitted.
+
+#### AIS — NOAA Marine Cadastre
+- **Clip-and-ship web tool (AccessAIS):** https://coast.noaa.gov/digitalcoast/tools/ais.html
+  - Custom area + time; output zipped CSV; order limit ~2 GB.
+- **Bulk / experimental GeoParquet (2024 & 2025):**
+  - Daily broadcast points: `https://ocmgeodatastor1.blob.core.windows.net/marinecadastre/ais2024/`
+  - Monthly vessel tracks: `https://ocmgeodatastor1.blob.core.windows.net/marinecadastre/aistrack/index-aistrack.html`
+  - Guidance repo: https://github.com/ocm-marinecadastre/ais-vessel-traffic
+- **FAQ / data dictionary:** https://coast.noaa.gov/data/marinecadastre/ais/faq.pdf
+- **2024 metadata (InPort):** https://www.fisheries.noaa.gov/inport/item/75937
+- **License:** Public US government data; suitable for build/validation. Confirm redistribution terms for any published raw data.
+
+#### Behavior / Validation Cross-Reference
+- **Global Fishing Watch:** https://globalfishingwatch.org/ — apparent fishing, encounters, loitering APIs (not raw AIS position feed).
+- **Related memories:** TBD
+
+---
+
+## 13. Quick Commands
+
+TBD as the environment is stood up. Likely to include:
+
+```bash
+# Score candidate passes by open-water fraction and pick the best one
+python scripts/pick_ocean_scene.py --start 2024-07-01 --end 2024-07-31 --max-results 50
+
+# Download a Sentinel-1 scene over the test theater (uses .env for credentials)
+python scripts/fetch_first_scene.py --start 2024-07-11 --end 2024-07-12 --max-results 5 --download
+
+# Run the S1 prep pipeline
+python scripts/prep_s1.py "data/raw/s1/...SAFE" --output-dir data/processed/... --tile-size 1024 --overlap 128 --buffer-deg 0.005 --bbox "-120.8,34.3,-119.8,34.7"
+
+# Validate tiles as a mosaic
+python scripts/mosaic_tiles.py data/processed/.../manifest.json --output notebooks/phase1_mosaic.png
+
+# Detect vessels
+darkwatch detect --tiles data/processed/tiles/ --output data/contacts.json
+
+# Fuse with AIS and attribute
+darkwatch fuse --contacts data/contacts.json --ais data/raw/ais/... --output data/alerts.json
+```
+
+---
+
+## 14. Appendix
+
+### 14.1 Verdict Taxonomy
+- **DARK** — deliberate dark vessel, high confidence.
+- **REVIEW** — plausible dark vessel, uncertainty too high to call.
+- **CLEAR** — matched to a transponding AIS track.
+- **ARTIFACT** — radar false contact or non-vessel object.
+
+### 14.2 Component Probabilities (S3 evidence trail)
+For each DARK/REVIEW verdict, surface:
+1. `P(real vessel | SAR)` — detector confidence + artifact filter.
+2. `P(no AIS track claims it | AIS)` — association / explain-away.
+3. `P(not rig/fixed false zone | context)` — static-object exclusion.
+4. `P(not innocent AIS gap | AIS quality / timing)` — dropout vs switch-off.
+
+Final `P(dark)` is a function of these; the **weakest link** is reported explicitly.
+
+### 14.3 Environment Variables / Secrets (names only, never values)
+Store actual values in `.env` (gitignored). Names expected by the code:
+- `DARKWATCH_CDSE_USERNAME`
+- `DARKWATCH_CDSE_PASSWORD`
+- `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` (only if using S3 mirror)
+- `GFW_API_KEY` (Phase 4)
+
+The repo-level `.env` is loaded automatically by `scripts/fetch_first_scene.py` and `scripts/pick_ocean_scene.py` via `python-dotenv`.

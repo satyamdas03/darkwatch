@@ -1,0 +1,25 @@
+.env
+.env.*
+*.pyc
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.log
+.ipynb_checkpoints/
+# Large downloaded / generated data
+data/raw/s1/*.zip
+data/raw/s1/**/*.SAFE
+data/raw/s1/*.json
+data/external/ssdd/
+data/external/*.zip
+data/external/*.exe
+data/external/*.msi
+data/external/7za_dir/
+data/processed/*/
+# Models and base weights
+models/
+yolov8n.pt
+# Debug outputs
+land_debug.png

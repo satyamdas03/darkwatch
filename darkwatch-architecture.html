@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DARKWATCH — Architecture & Build Plan</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Barlow+Condensed:wght@500;600;700&display=swap');
+
+  :root{
+    --abyss:#06131c;
+    --deep:#0a2030;
+    --deep-2:#0e2a3d;
+    --hull:#14384d;
+    --line:#1d4a63;
+    --fog:#7fa9bd;
+    --ice:#cfe6ef;
+    --sweep:#3ff2a0;      /* radar return — the signal */
+    --sweep-dim:#1f8a5e;
+    --ais:#48b6ff;        /* cooperative / transponding */
+    --dark:#ff4d5e;       /* dark vessel — the catch */
+    --amber:#ffb54d;      /* uncertain */
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--abyss);
+    color:var(--ice);
+    font-family:'Space Grotesk',sans-serif;
+    line-height:1.55;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  .wrap{max-width:1140px;margin:0 auto;padding:0 28px}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+  /* ---------- HERO ---------- */
+  header{position:relative;padding:0;border-bottom:1px solid var(--line);overflow:hidden}
+  .radar-stage{position:relative;height:460px;display:flex;align-items:center}
+  .radar-bg{position:absolute;inset:0;background:
+    radial-gradient(circle at 78% 50%, rgba(63,242,160,.08), transparent 42%),
+    radial-gradient(circle at 78% 50%, var(--deep), var(--abyss) 70%);}
+  /* concentric radar rings */
+  .rings{position:absolute;right:2%;top:50%;transform:translateY(-50%);width:520px;height:520px;opacity:.5}
+  .rings span{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);border:1px solid var(--sweep-dim);border-radius:50%;opacity:.35}
+  .rings span:nth-child(1){width:120px;height:120px}
+  .rings span:nth-child(2){width:260px;height:260px}
+  .rings span:nth-child(3){width:400px;height:400px}
+  .rings span:nth-child(4){width:520px;height:520px}
+  .rings .cross-h{width:520px;height:1px;background:var(--sweep-dim);border:none;opacity:.25}
+  .rings .cross-v{width:1px;height:520px;background:var(--sweep-dim);border:none;opacity:.25}
+  .sweep{position:absolute;top:50%;left:50%;width:260px;height:260px;transform-origin:top left;
+    background:conic-gradient(from 0deg, rgba(63,242,160,.30), transparent 40%);
+    border-radius:50%;transform:translate(-1px,-1px);animation:spin 5.5s linear infinite}
+  @keyframes spin{to{transform:translate(-1px,-1px) rotate(360deg)}}
+  /* blips */
+  .blip{position:absolute;width:9px;height:9px;border-radius:50%;transform:translate(-50%,-50%)}
+  .blip.ais{background:var(--ais);box-shadow:0 0 10px var(--ais)}
+  .blip.dark{background:var(--dark);box-shadow:0 0 14px var(--dark);animation:pulse 1.8s ease-in-out infinite}
+  @keyframes pulse{0%,100%{opacity:.55;transform:translate(-50%,-50%) scale(1)}50%{opacity:1;transform:translate(-50%,-50%) scale(1.5)}}
+  .blip .lbl{position:absolute;left:14px;top:-4px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.05em;white-space:nowrap}
+  .blip.ais .lbl{color:var(--ais)}
+  .blip.dark .lbl{color:var(--dark)}
+
+  .hero-copy{position:relative;z-index:2;max-width:620px}
+  .kicker{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.28em;text-transform:uppercase;color:var(--sweep);margin-bottom:20px;display:flex;align-items:center;gap:10px}
+  .kicker::before{content:"";width:26px;height:1px;background:var(--sweep)}
+  h1{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:clamp(56px,11vw,120px);line-height:.86;letter-spacing:.01em;text-transform:uppercase}
+  h1 .l2{color:var(--sweep)}
+  .tag{font-size:clamp(16px,2.2vw,21px);color:var(--fog);margin-top:16px;max-width:44ch;font-weight:400}
+
+  /* ---------- SECTIONS ---------- */
+  section{padding:64px 0;border-bottom:1px solid var(--line);position:relative}
+  .sec-head{display:flex;align-items:center;gap:16px;margin-bottom:14px}
+  .sec-tag{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--sweep);letter-spacing:.15em}
+  h2{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:clamp(30px,5vw,46px);text-transform:uppercase;letter-spacing:.02em}
+  .lede{font-size:16.5px;color:var(--fog);max-width:74ch;margin-bottom:6px}
+  .lede strong{color:var(--ice);font-weight:600}
+  em.hi{color:var(--sweep);font-style:normal;font-weight:600}
+
+  /* problem strip */
+  .why{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin-top:34px}
+  @media(max-width:720px){.why{grid-template-columns:1fr}}
+  .why div{background:var(--deep);padding:22px 20px}
+  .why .big{font-family:'Barlow Condensed',sans-serif;font-size:40px;font-weight:700;color:var(--sweep);line-height:1}
+  .why p{font-size:13.5px;color:var(--fog);margin-top:8px}
+
+  /* legend */
+  .legend{display:flex;flex-wrap:wrap;gap:12px 26px;margin:30px 0 32px;font-family:'JetBrains Mono',monospace;font-size:12px}
+  .legend span{display:inline-flex;align-items:center;gap:9px;color:var(--ice)}
+  .sq{width:11px;height:11px;flex:none;border-radius:2px}
+
+  /* ---------- PIPELINE ---------- */
+  .flow{display:flex;flex-direction:column;gap:0;margin-top:8px}
+  .layer{position:relative;border:1px solid var(--line);background:linear-gradient(180deg,var(--deep-2),var(--deep));padding:22px 24px 24px;margin-bottom:38px}
+  .layer::after{content:"";position:absolute;left:46px;bottom:-38px;width:1px;height:38px;background:linear-gradient(var(--sweep-dim),transparent)}
+  .layer:last-child::after{display:none}
+  .layer::before{content:"";position:absolute;left:42px;bottom:-12px;width:9px;height:9px;border-right:1px solid var(--sweep-dim);border-bottom:1px solid var(--sweep-dim);transform:rotate(45deg)}
+  .layer:last-child::before{display:none}
+  .l-top{display:flex;align-items:center;gap:14px;margin-bottom:6px;flex-wrap:wrap}
+  .l-id{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:var(--abyss);background:var(--sweep);padding:4px 9px;letter-spacing:.08em}
+  .l-name{font-family:'Barlow Condensed',sans-serif;font-size:27px;font-weight:700;text-transform:uppercase;letter-spacing:.02em}
+  .l-flow{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--fog);margin-left:auto;letter-spacing:.03em}
+  .l-desc{font-size:14.5px;color:var(--fog);max-width:80ch;margin-bottom:18px}
+  .l-desc b{color:var(--ice)}
+  .mods{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+  .mod{border:1px solid var(--line);background:rgba(6,19,28,.5);padding:13px 14px;position:relative}
+  .mod h4{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.02em;margin-bottom:6px;color:var(--ice)}
+  .mod p{font-size:12.5px;color:var(--fog);line-height:1.45}
+  .core-badge{position:absolute;top:-9px;right:10px;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.1em;background:var(--dark);color:#fff;padding:2px 7px}
+  .l-rail{position:absolute;left:0;top:0;bottom:0;width:4px}
+
+  /* the DEEP PROBLEM callout inside L3 */
+  .deepbox{margin-top:16px;border:1px solid var(--dark);background:rgba(255,77,94,.06);padding:16px 18px}
+  .deepbox h5{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.12em;color:var(--dark);margin-bottom:8px}
+  .deepbox p{font-size:13.5px;color:var(--ice);max-width:82ch}
+
+  /* ---------- OUTPUT CONSOLE ---------- */
+  .console{border:1px solid var(--line);background:var(--deep);margin-top:10px}
+  .con-bar{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--line);background:var(--abyss)}
+  .con-bar .dotset{display:flex;gap:6px}
+  .con-bar .dotset i{width:9px;height:9px;border-radius:50%;background:var(--hull)}
+  .con-bar .title{font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.1em;color:var(--fog)}
+  .con-bar .live{margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--sweep);display:flex;align-items:center;gap:7px}
+  .con-bar .live::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--sweep);animation:pulse 1.5s infinite}
+  .con-body{display:grid;grid-template-columns:1.15fr 1fr;gap:0}
+  @media(max-width:760px){.con-body{grid-template-columns:1fr}}
+  .detections{border-right:1px solid var(--line)}
+  @media(max-width:760px){.detections{border-right:none;border-bottom:1px solid var(--line)}}
+  .det{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:14px 18px;border-bottom:1px solid rgba(29,74,99,.4)}
+  .det:last-child{border-bottom:none}
+  .det .icon{width:12px;height:12px;border-radius:50%}
+  .det .id{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--ice)}
+  .det .id small{display:block;color:var(--fog);font-size:11px;margin-top:2px}
+  .det .verdict{font-family:'JetBrains Mono',monospace;font-size:11px;text-align:right;letter-spacing:.03em}
+  .det .conf{font-size:10px;color:var(--fog);margin-top:2px}
+  .panel{padding:18px}
+  .panel h4{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.1em;color:var(--fog);margin-bottom:14px}
+  .evrow{margin-bottom:14px}
+  .evrow .lab{display:flex;justify-content:space-between;font-family:'JetBrains Mono',monospace;font-size:11px;margin-bottom:5px}
+  .evrow .lab span:first-child{color:var(--ice)}
+  .evrow .lab span:last-child{color:var(--fog)}
+  .track{height:7px;background:var(--abyss);border:1px solid var(--line);position:relative;overflow:hidden}
+  .track i{position:absolute;left:0;top:0;bottom:0}
+  .verdict-final{margin-top:16px;border-top:1px solid var(--line);padding-top:14px;font-family:'JetBrains Mono',monospace}
+  .verdict-final .v{font-size:20px;color:var(--dark);font-weight:700;letter-spacing:.02em}
+  .verdict-final .sub{font-size:11px;color:var(--fog);margin-top:4px}
+  .cap{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--fog);margin-top:16px}
+
+  /* ---------- PHASES ---------- */
+  .phase{display:grid;grid-template-columns:96px 1fr;border:1px solid var(--line);margin-bottom:-1px;background:linear-gradient(180deg,var(--deep-2),var(--deep))}
+  .p-id{border-right:1px solid var(--line);padding:20px 14px;background:var(--abyss);display:flex;flex-direction:column;gap:2px}
+  .p-id .p{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--fog);letter-spacing:.15em}
+  .p-id .n{font-family:'Barlow Condensed',sans-serif;font-size:44px;font-weight:700;color:var(--sweep);line-height:.9}
+  .p-body{padding:20px 24px}
+  .p-body h3{font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:700;text-transform:uppercase;letter-spacing:.02em;margin-bottom:3px}
+  .p-body .goal{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--sweep);margin-bottom:14px;letter-spacing:.02em}
+  .p-body ul{list-style:none;display:grid;gap:8px}
+  .p-body li{font-size:14.5px;color:var(--ice);padding-left:22px;position:relative}
+  .p-body li::before{content:"▸";position:absolute;left:0;color:var(--sweep-dim)}
+  .ship{margin-top:14px;border-top:1px solid rgba(29,74,99,.5);padding-top:12px;font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--fog)}
+  .ship b{color:var(--sweep)}
+  .lic{margin-top:8px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--ais)}
+  .lic b{color:var(--ice)}
+
+  /* blockers */
+  .blk{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:26px}
+  @media(max-width:720px){.blk{grid-template-columns:1fr}}
+  .bcard{border:1px solid var(--line);background:var(--deep);padding:18px 19px}
+  .bcard.clear{border-left:3px solid var(--sweep)}
+  .bcard.watch{border-left:3px solid var(--amber)}
+  .bcard .st{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.08em;margin-bottom:9px}
+  .bcard.clear .st{color:var(--sweep)}
+  .bcard.watch .st{color:var(--amber)}
+  .bcard h4{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:600;text-transform:uppercase;margin-bottom:6px}
+  .bcard p{font-size:13.5px;color:var(--fog)}
+
+  footer{padding:46px 0 66px}
+  footer .sig{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--sweep)}
+  footer .note{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--fog);margin-top:8px}
+  .scope-tab{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--abyss);background:var(--sweep);padding:3px 9px;letter-spacing:.05em;margin-bottom:4px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="radar-stage">
+    <div class="radar-bg"></div>
+    <div class="rings" aria-hidden="true">
+      <span class="cross-h"></span><span class="cross-v"></span>
+      <span></span><span></span><span></span><span></span>
+      <div class="sweep"></div>
+      <div class="blip ais" style="right:38%;top:34%"><span class="lbl">AIS ✓ MV-CORAL</span></div>
+      <div class="blip ais" style="right:18%;top:62%"><span class="lbl">AIS ✓ MV-TERN</span></div>
+      <div class="blip dark" style="right:52%;top:56%"><span class="lbl">◆ NO AIS — CONTACT</span></div>
+    </div>
+    <div class="wrap">
+      <div class="hero-copy">
+        <div class="kicker">System Architecture · Build Plan · v0</div>
+        <h1>Dark<span class="l2">watch</span></h1>
+        <p class="tag">A radar contact with no transponder is either noise, a rig, a mismatch — or a ship that chose to disappear. Darkwatch decides which, and says how sure it is.</p>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- WHY -->
+<section>
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-tag">// 00</span><h2>The gap</h2></div>
+    <p class="lede">Ships are legally required to broadcast their position over <strong>AIS</strong>. The ones doing the most harm — illegal fishing, sanctions running, smuggling — simply switch it off and vanish from the cooperative picture. But radar doesn't need their cooperation. <strong>Sentinel-1 SAR sees through cloud and dark, and sees metal on water whether it wants to be seen or not.</strong> Cross the two, and the ships that went dark light up by their absence.</p>
+    <div class="why">
+      <div><div class="big">$23B+</div><p>Estimated annual value of illegal, unreported fishing alone — before smuggling and sanctions evasion.</p></div>
+      <div><div class="big">Free</div><p>Sentinel-1 SAR: full global archive, open license, redistribution allowed, S3 + REST API access.</p></div>
+      <div><div class="big">Solved→Open</div><p>Detecting the blip is solved. Deciding what it <em class="hi">means</em> is the open problem — and the heart of this build.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ARCHITECTURE -->
+<section>
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-tag">// 01</span><h2>Architecture</h2></div>
+    <p class="lede">Five stages, from raw radar to a defensible accusation. The easy stages are the two ends. The value — and the real research — lives in the middle, where two noisy, heterogeneous signals get fused and a contact gets a verdict it has to <em class="hi">earn</em>.</p>
+
+    <div class="legend">
+      <span><span class="sq" style="background:var(--ais)"></span> cooperative / transponding (AIS)</span>
+      <span><span class="sq" style="background:var(--sweep)"></span> radar return (SAR)</span>
+      <span><span class="sq" style="background:var(--amber)"></span> uncertain / needs more evidence</span>
+      <span><span class="sq" style="background:var(--dark)"></span> dark vessel — the catch</span>
+    </div>
+
+    <div class="flow">
+
+      <!-- S1 -->
+      <div class="layer">
+        <div class="l-rail" style="background:var(--sweep)"></div>
+        <div class="l-top"><span class="l-id">S1</span><span class="l-name">SAR Ingestion & Prep</span><span class="l-flow">raw scenes → analysis-ready tiles</span></div>
+        <p class="l-desc">Pull Sentinel-1 scenes over a chosen maritime box, calibrate, and tile them into something a detector can chew. <b>Fully open data, API-accessible</b> — no wall here.</p>
+        <div class="mods">
+          <div class="mod"><h4>Scene fetch</h4><p>Copernicus / AWS S3 by area + date. Cloud-optimized GeoTIFF.</p></div>
+          <div class="mod"><h4>Radiometric prep</h4><p>Calibrate, speckle-filter, land-mask so only water remains.</p></div>
+          <div class="mod"><h4>Tiling</h4><p>Chip huge scenes into GPU-sized tiles with geo-coordinates kept.</p></div>
+          <div class="mod"><h4>Ocean-only mask</h4><p>Coastlines & fixed infrastructure removed up front.</p></div>
+        </div>
+      </div>
+
+      <!-- S2 -->
+      <div class="layer">
+        <div class="l-rail" style="background:var(--sweep)"></div>
+        <div class="l-top"><span class="l-id">S2</span><span class="l-name">Vessel Detection</span><span class="l-flow">tiles → candidate contacts</span></div>
+        <p class="l-desc">Find every metal-on-water return. This is the <b>well-studied part</b> — ship detection in SAR has strong published baselines. Fine-tune one on your 5060; don't reinvent it. The output is a list of contacts with position, size estimate, and a detection confidence.</p>
+        <div class="mods">
+          <div class="mod"><h4>Detector</h4><p>Fine-tuned SAR ship detector (open baselines exist). Not a giant model.</p></div>
+          <div class="mod"><h4>Contact extraction</h4><p>Each blip → lat/lon, length estimate, heading hint, timestamp.</p></div>
+          <div class="mod"><h4>Artifact filter</h4><p>First pass at rejecting wave clutter, azimuth ambiguities, wind streaks.</p></div>
+          <div class="mod"><h4>Confidence score</h4><p>How sure are we this is even a vessel? Carried forward, not discarded.</p></div>
+        </div>
+      </div>
+
+      <!-- S3 - THE CORE -->
+      <div class="layer">
+        <div class="l-rail" style="background:linear-gradient(var(--sweep),var(--dark))"></div>
+        <div class="l-top"><span class="l-id">S3</span><span class="l-name">Fusion & Attribution</span><span class="l-flow">contacts + AIS → matched or dark</span></div>
+        <p class="l-desc">The heart of the system. Take every SAR contact and ask: is there an AIS-broadcasting ship that plausibly was <em class="hi">right there, right then</em>? Match them, and what's left unmatched is your candidate dark fleet. But "unmatched" is a claim with consequences, so this stage is really about <b>reasoning under uncertainty</b>, not a simple join.</p>
+        <div class="mods">
+          <div class="mod"><span class="core-badge">DEEP PROBLEM</span><h4>Spatiotemporal match</h4><p>AIS is time-sampled and drifts; SAR is one instant. Match across a moving, uncertain gap.</p></div>
+          <div class="mod"><h4>Probabilistic association</h4><p>Not yes/no. P(this contact = this AIS track), with the uncertainty made explicit.</p></div>
+          <div class="mod"><h4>Dark candidate finder</h4><p>Contacts no AIS track can claim — ranked by how confidently they're truly dark.</p></div>
+          <div class="mod"><h4>Explain-away engine</h4><p>Could it be a rig, a known false-return zone, an AIS gap not a switch-off? Rule those out first.</p></div>
+        </div>
+        <div class="deepbox">
+          <h5>▶ THE PROBLEM THAT MAKES THIS RESEARCH, NOT PLUMBING</h5>
+          <p>A missed match and a real dark vessel look identical at the blip level. AIS drops out for innocent reasons all the time; a SAR contact can be a wave. So the true task is calibrated inference: assign each contact an honest probability of being a deliberate dark vessel, fusing two signals that disagree about time, position, and even existence — and be right often enough that an accusation means something. This is the same honest-uncertainty problem at the center of the finance idea, wearing a radar's clothes.</p>
+        </div>
+      </div>
+
+      <!-- S4 -->
+      <div class="layer">
+        <div class="l-rail" style="background:linear-gradient(var(--dark),var(--amber))"></div>
+        <div class="l-top"><span class="l-id">S4</span><span class="l-name">Behavior & Intent</span><span class="l-flow">dark contacts → why it matters</span></div>
+        <p class="l-desc">A single dark blip is weak. A dark blip <b>loitering over a known fishing ground</b>, or <b>meeting another vessel at sea</b> (a possible transshipment), or sitting in a protected marine area, is a signal worth acting on. This stage adds the context that turns a detection into an alert.</p>
+        <div class="mods">
+          <div class="mod"><h4>Pattern-of-life</h4><p>Cross-scene: is this contact dark repeatedly, or once? Persistence = intent.</p></div>
+          <div class="mod"><h4>Zone overlay</h4><p>Protected areas, EEZ lines, known fishing grounds, sanctioned waters.</p></div>
+          <div class="mod"><h4>Rendezvous flag</h4><p>Two vessels meeting mid-ocean — the transshipment fingerprint.</p></div>
+          <div class="mod"><h4>Priority score</h4><p>Rank alerts so a human looks at the 5 that matter, not 500 blips.</p></div>
+        </div>
+      </div>
+
+      <!-- S5 -->
+      <div class="layer">
+        <div class="l-rail" style="background:var(--ais)"></div>
+        <div class="l-top"><span class="l-id">S5</span><span class="l-name">Alert & Evidence</span><span class="l-flow">everything → a case a human can act on</span></div>
+        <p class="l-desc">Package each alert as something an analyst, patrol, or NGO can actually use and trust: the imagery, the reasoning, the confidence, the ruled-out alternatives. An accusation nobody can audit is worthless — the <b>evidence trail is the product</b>.</p>
+        <div class="mods">
+          <div class="mod"><h4>Contact dossier</h4><p>SAR chip, position, time, size, behavior, confidence — one glance.</p></div>
+          <div class="mod"><h4>Why-dark rationale</h4><p>Plain statement of what was ruled out and how sure the verdict is.</p></div>
+          <div class="mod"><h4>Map & replay</h4><p>Where, when, and the track context around the detection.</p></div>
+          <div class="mod"><h4>Export</h4><p>Feed to whoever acts — patrol, insurer, fishery authority, researcher.</p></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- OUTPUT -->
+<section>
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-tag">// 02</span><h2>What the output looks like</h2></div>
+    <p class="lede">Not a wall of blips. A short, ranked list of contacts that earned attention — each with a verdict, a confidence, and the evidence behind it.</p>
+
+    <div class="console">
+      <div class="con-bar">
+        <div class="dotset"><i></i><i></i><i></i></div>
+        <span class="title">DARKWATCH · SECTOR 14-S · PASS 2026-08-04 09:12Z</span>
+        <span class="live">LIVE</span>
+      </div>
+      <div class="con-body">
+        <div class="detections">
+          <div class="det"><span class="icon" style="background:var(--dark)"></span><span class="id">CONTACT-0417<small>18.2m · loitering 6h · inside MPA</small></span><span class="verdict" style="color:var(--dark)">DARK<br><span class="conf">p=0.91</span></span></div>
+          <div class="det"><span class="icon" style="background:var(--amber)"></span><span class="id">CONTACT-0392<small>12.7m · single pass · open water</small></span><span class="verdict" style="color:var(--amber)">REVIEW<br><span class="conf">p=0.58</span></span></div>
+          <div class="det"><span class="icon" style="background:var(--ais)"></span><span class="id">CONTACT-0388<small>matched → MV-CORAL, 41s gap</small></span><span class="verdict" style="color:var(--ais)">CLEAR<br><span class="conf">p=0.97</span></span></div>
+          <div class="det"><span class="icon" style="background:var(--sweep)"></span><span class="id">CONTACT-0371<small>likely wave clutter, low RCS</small></span><span class="verdict" style="color:var(--fog)">ARTIFACT<br><span class="conf">p=0.12</span></span></div>
+        </div>
+        <div class="panel">
+          <h4>▸ CONTACT-0417 — EVIDENCE</h4>
+          <div class="evrow"><div class="lab"><span>Is a real vessel</span><span>0.94</span></div><div class="track"><i style="width:94%;background:var(--sweep)"></i></div></div>
+          <div class="evrow"><div class="lab"><span>No AIS track can claim it</span><span>0.96</span></div><div class="track"><i style="width:96%;background:var(--dark)"></i></div></div>
+          <div class="evrow"><div class="lab"><span>Not a rig / known false zone</span><span>0.89</span></div><div class="track"><i style="width:89%;background:var(--sweep)"></i></div></div>
+          <div class="evrow"><div class="lab"><span>Not an innocent AIS gap</span><span>0.83</span></div><div class="track"><i style="width:83%;background:var(--amber)"></i></div></div>
+          <div class="verdict-final">
+            <div class="v">▶ DELIBERATE DARK · p=0.91</div>
+            <div class="sub">Loitering 6h inside a protected marine area with no transponder. Weakest link: AIS-gap ruling (0.83). Recommend tasking.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="cap">The verdict carries its own weakest link. The system tells you where it's least sure — so a human knows exactly what to check before acting.</p>
+  </div>
+</section>
+
+<!-- PLAN -->
+<section>
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-tag">// 03</span><h2>Build plan</h2></div>
+    <p class="lede">Sequenced so every phase ships something real on a single RTX 5060, on open data, with no licensing wall. The hard research (S3 fusion) comes as soon as there's something to fuse — because that's the make-or-break, and you want to hit it early.</p>
+
+    <div style="margin-top:26px">
+      <div class="phase">
+        <div class="p-id"><span class="p">PH</span><span class="n">0</span></div>
+        <div class="p-body">
+          <h3>Recon & first light</h3>
+          <div class="goal">// get real SAR onto your screen</div>
+          <ul>
+            <li>Register for Copernicus Data Space; pull a few Sentinel-1 scenes over one busy strait</li>
+            <li>Get comfortable with the format: calibrate, view, land-mask by hand once</li>
+            <li>Pick your test theater — one bounded sea area with known traffic</li>
+          </ul>
+          <div class="ship"><b>Ships:</b> real radar imagery on disk, and a felt sense of the raw material.</div>
+          <div class="lic"><b>LICENSE:</b> Sentinel-1 open, redistribution OK. Zero blocker.</div>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="p-id"><span class="p">PH</span><span class="n">1</span></div>
+        <div class="p-body">
+          <h3>Ingestion pipeline</h3>
+          <div class="goal">// S1 — scenes to tiles, automatically</div>
+          <ul>
+            <li>Automate fetch → calibrate → speckle-filter → land-mask → tile</li>
+            <li>Keep geo-coordinates attached to every tile (you'll need them to match AIS)</li>
+            <li>Make the data source a swappable adapter from day one</li>
+          </ul>
+          <div class="ship"><b>Ships:</b> point it at a box + date, get analysis-ready ocean tiles.</div>
+          <div class="lic"><b>LICENSE:</b> clean.</div>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="p-id"><span class="p">PH</span><span class="n">2</span></div>
+        <div class="p-body">
+          <h3>Vessel detector</h3>
+          <div class="goal">// S2 — find every contact</div>
+          <ul>
+            <li>Fine-tune an open SAR ship-detection baseline on your 5060</li>
+            <li>Output contacts with position, size, and a real confidence score</li>
+            <li>First-pass artifact rejection (waves, ambiguities)</li>
+          </ul>
+          <div class="ship"><b>Ships:</b> a scene in, a clean list of vessel contacts out.</div>
+          <div class="lic"><b>LICENSE:</b> open training data exists; verify each set's terms as you go.</div>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="p-id"><span class="p">PH</span><span class="n">3</span></div>
+        <div class="p-body">
+          <h3>Fusion & attribution ★</h3>
+          <div class="goal">// S3 — the research core. make-or-break.</div>
+          <ul>
+            <li>Ingest AIS for the same box + time; reconstruct where each ship plausibly was</li>
+            <li>Build probabilistic association: P(contact = track), uncertainty explicit</li>
+            <li>The key test: on cases you can ground-truth, are your "dark" calls actually dark?</li>
+            <li>Calibrate until a stated p=0.9 means it's really dark ~90% of the time</li>
+          </ul>
+          <div class="ship"><b>Ships:</b> the nameable contribution — calibrated dark-vessel attribution from fused SAR + AIS.</div>
+          <div class="lic"><b>LICENSE:</b> free historical/sampled AIS is fine for the build; global live feeds may cost — swappable adapter covers it.</div>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="p-id"><span class="p">PH</span><span class="n">4</span></div>
+        <div class="p-body">
+          <h3>Behavior & prioritization</h3>
+          <div class="goal">// S4 — turn detections into alerts</div>
+          <ul>
+            <li>Persistence across passes, zone overlays (MPAs, EEZs, fishing grounds)</li>
+            <li>Rendezvous detection for possible transshipment</li>
+            <li>Priority scoring so humans see the few that matter</li>
+          </ul>
+          <div class="ship"><b>Ships:</b> ranked alerts with context, not a flat list of blips.</div>
+          <div class="lic"><b>LICENSE:</b> zone data mostly public/gov open.</div>
+        </div>
+      </div>
+
+      <div class="phase">
+        <div class="p-id"><span class="p">PH</span><span class="n">5</span></div>
+        <div class="p-body">
+          <h3>Evidence layer & proof</h3>
+          <div class="goal">// S5 — make it usable and provable</div>
+          <ul>
+            <li>Contact dossiers: imagery + reasoning + confidence + ruled-out alternatives</li>
+            <li>Validate against a known case (a documented dark-fleet event) end to end</li>
+            <li>Write up the attribution method — publishable independent of any product</li>
+          </ul>
+          <div class="ship"><b>Ships:</b> the whole chain, radar → auditable accusation, with evidence it works.</div>
+          <div class="lic"><b>LICENSE:</b> results & method publishable; raw data redistribution follows each source's terms.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- BLOCKERS -->
+<section>
+  <div class="wrap">
+    <div class="sec-head"><span class="sec-tag">// 04</span><h2>Logistics status</h2></div>
+    <p class="lede">You said friction is the enemy. Here's the honest board. Almost all green.</p>
+    <div class="blk">
+      <div class="bcard clear"><div class="st">● CLEAR</div><h4>SAR data</h4><p>Sentinel-1 fully open, redistribution allowed, S3 + REST API. The core input has no wall.</p></div>
+      <div class="bcard clear"><div class="st">● CLEAR</div><h4>Employer overlap</h4><p>Nothing to do with Financial Simplicity. No contract to read, no conversation to have.</p></div>
+      <div class="bcard clear"><div class="st">● CLEAR</div><h4>Libraries & solvers</h4><p>SAR + geospatial + ML stack is permissively licensed. Commercial use fine.</p></div>
+      <div class="bcard clear"><div class="st">● CLEAR</div><h4>Compute</h4><p>Detector fine-tunes on your 5060. No cloud dependency to build.</p></div>
+      <div class="bcard watch"><div class="st">◐ WATCH</div><h4>AIS feeds</h4><p>Free historical/sampled AIS is enough to build & validate. Comprehensive live global AIS can cost — only matters if you go real-time. Adapter design absorbs it.</p></div>
+      <div class="bcard watch"><div class="st">◐ WATCH</div><h4>Detector training sets</h4><p>Open SAR ship datasets exist; just check each one's license before training. Minor diligence, not a wall.</p></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span class="scope-tab">SCOPE VERDICT</span>
+    <p class="sig">Bigger system · deep problem intact · cleanest logistics of any option</p>
+    <p class="note">v0 architecture & build plan · single-GPU feasible · open-data · impact-first, funding-agnostic</p>
+  </div>
+</footer>
+
+</body>
+</html>
