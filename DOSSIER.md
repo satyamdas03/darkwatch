@@ -188,6 +188,7 @@ darkwatch/
 - [x] **Nearest-neighbor evidence added to fusion output:** `ContactVerdict` now carries `nearest_association`, `n_tracks_within_gate`, and `n_tracks_near_gate` so every unmatched contact reports the closest AIS track even when it lies outside the gate.
 - [x] **Coverage-gap / innocent-dropout adjustment added:** when no AIS track is within 2× the gate radius, the model shifts 25% of `p_dark` to `p_review`, producing a more honest uncertainty estimate. First real verdict updated to `p_dark=0.7299`, `p_review=0.2433`, `p_artifact=0.0268`, `p_clear=0.0`.
 - [x] **`scripts/fuse_contacts.py` now writes `summary.json`** alongside `verdicts.json` for run-level metadata.
+- [x] **Reproducible Markdown report generator added:** `scripts/fusion_report.py` consumes `contacts.json`, the clipped AIS CSV, `verdicts.json`, and `summary.json` to produce a human-readable fusion report. Used to regenerate `notebooks/fusion_20240711_report.md`.
 - [x] **Human-readable fusion report generated:** `notebooks/fusion_20240711_report.md` summarizes the verdict, all 9 MMSIs in the theater, and interpretation caveats.
 - [x] Unit tests pass (`pytest tests/ -q` → 14 passed).
 
@@ -517,6 +518,14 @@ python scripts/fuse_contacts.py \
   --contacts data/processed/detections_20240711/contacts.json \
   --ais data/external/ais/ais_2024-07-11_clipped.csv \
   --output-dir data/processed/fusion_20240711
+
+# Generate human-readable Markdown report from the fusion outputs
+python scripts/fusion_report.py \
+  --contacts data/processed/detections_20240711/contacts.json \
+  --ais data/external/ais/ais_2024-07-11_clipped.csv \
+  --verdicts data/processed/fusion_20240711/verdicts.json \
+  --summary data/processed/fusion_20240711/summary.json \
+  --output notebooks/fusion_20240711_report.md
 ```
 
 ---
