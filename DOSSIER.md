@@ -16,8 +16,9 @@
 | **Mode** | Impact-first, funding-agnostic, single-consumer-GPU research/engineering build. |
 | **Status** | Phase 1 — SAR Ingestion & Prep COMPLETE; starting Phase 2 (vessel detection) |
 | **Start Date** | 2026-08-04 |
-| **Last Updated** | 2026-08-04 (recovery deep-dive + dossier refresh) |
-| **Current Branch** | main (darkwatch directory is currently untracked in parent repo at `C:/Users/point`)|
+| **Last Updated** | 2026-08-04 (git extraction + initial commit) |
+| **Current Branch** | main |
+| **Git Remote** | Local only — create `satyamdas03/darkwatch` on GitHub and push when ready |
 | **Lead Engineer** | Bull (Claude Code agent) |
 | **Founder** | Satyam Das — AI/ML engineer |
 | **Compute** | NVIDIA RTX 5060, 8 GB VRAM, local Windows machine |
@@ -256,7 +257,8 @@ darkwatch/
 | 2026-08-04 | ✅ RESOLVED — Scene selection: score passes by open-water fraction to avoid land-only acquisitions | — | Bull |
 | 2026-08-04 | Which open SAR ship detection dataset has the most permissive license? | Medium — blocks S2 | Bull |
 | 2026-08-04 | Detector training run was interrupted by crash; `weights/` directory is empty | High — blocks S2 inference | Bull |
-| 2026-08-04 | Darkwatch directory is untracked in parent git repo rooted at `C:/Users/point` | Medium — risk of losing work; needs proper commit strategy | Bull |
+| 2026-08-04 | ✅ RESOLVED — Darkwatch extracted into its own git repository at `C:/Users/point/projects/darkwatch` | — | Bull |
+| 2026-08-04 | Create/push `satyamdas03/darkwatch` GitHub repository | Low — local repo is safe; remote needed for backup/collaboration | Bull |
 | 2026-08-04 | AIS data pull for the 2024-07-11 Santa Barbara Channel window | Medium — blocks S3 fusion validation | Bull |
 
 ---
@@ -313,6 +315,19 @@ darkwatch/
 - **Git situation discovered:** the git repository root is `C:/Users/point`, so the entire `darkwatch/` directory appears as a single untracked entry (`?? ./`) under that parent repo. No darkwatch-specific commits exist yet. This is a medium-risk logistics issue to resolve.
 - **Updated `DOSSIER.md`** with current state, new blockers (interrupted training, untracked repo root), and this session log entry.
 - **Next action:** Re-run `python scripts/train_detector.py` to complete Phase 2 detector training; then run inference with `scripts/detect_tiles.py` on the July 11 tiles; then move to Phase 3 (AIS pull + probabilistic fusion).
+
+### 2026-08-04 — Git fix: Darkwatch extracted into its own repository
+- **Issue:** `C:/Users/point` was the git root of `alpaca-trading-agent`; Darkwatch had just been committed into that parent repo as `projects/darkwatch/`.
+- **Fix applied:**
+  1. In parent repo: `git reset --soft HEAD~1` + `git rm -r --cached projects/darkwatch` to stop tracking Darkwatch.
+  2. Added `projects/darkwatch/` to parent `C:/Users/point/.gitignore`.
+  3. Committed parent extraction: `chore(repo): extract darkwatch into its own dedicated repository`.
+  4. Initialized a fresh git repo inside `C:/Users/point/projects/darkwatch/`.
+  5. Broadened `darkwatch/.gitignore` to exclude all `data/`, `models/`, and base weights.
+  6. Committed clean initial Darkwatch repo on branch `main`: source, scripts, tests, docs, notebooks.
+- **Result:** Darkwatch is now an independent repository. Parent repo ignores it. No remote set yet — GitHub repo creation/push is pending user approval.
+- **Files committed to darkwatch:** `DOSSIER.md`, `README.md`, `darkwatch-architecture.html`, `darkwatch/` package, `scripts/`, `tests/`, `pyproject.toml`, `notebooks/` validation PNGs.
+- **Files excluded:** `.env`, `data/`, `models/`, `yolov8n.pt`, `__pycache__/`.
 
 ---
 
