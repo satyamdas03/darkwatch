@@ -174,13 +174,13 @@ darkwatch/
 - [x] Unit tests pass (`pytest tests/ -q` → 13 passed).
 - [x] **Phase 3 Fusion & Attribution scaffold implemented** while NOAA AIS daily zip downloads:
   - `darkwatch/fusion/ais.py` — `AISTrack` dataclass with interpolation and GPS uncertainty model.
-  - `darkwatch/fusion/associate.py` — `ContactVerdict`, `TrackAssociation`, `associate_contact()` / `associate_all_contacts()`; produces CLEAR / DARK / ARTIFACT / REVIEW verdicts with component probabilities.
+  - `darkwatch/fusion/associate.py` — `ContactVerdict`, `TrackAssociation`, `associate_contact()` / `associate_all_contacts()`; produces CLEAR / DARK / ARTIFACT / REVIEW verdicts with coherent component probabilities (artifact mass from low detector confidence; clear/dark split the real-vessel mass by AIS evidence).
   - `darkwatch/fusion/verdict.py` — `Verdict` enum.
   - `darkwatch/fusion/__init__.py` — public exports wired.
   - `scripts/fetch_ais.py` — download NOAA daily AIS zip, unzip, filter to bbox/time window, write clipped CSV.
   - `scripts/fuse_contacts.py` — load contacts + AIS, run association, write `verdicts.json` with summary counts.
   - `tests/test_fusion.py` — unit tests for AIS CSV filtering, track interpolation, CLEAR/DARK verdicts, probability normalization.
-- [x] Unit tests pass (`pytest tests/ -q` → 10 passed).
+- [x] Unit tests pass (`pytest tests/ -q` → 13 passed).
 
 ### 6.1 Test Theater — Final Choice
 
@@ -387,6 +387,7 @@ darkwatch/
 - Added `--pol` polarization filter to `scripts/detect_tiles.py` so users can run VV, VH, or both.
 - Added `scripts/visualize_contact.py` to generate full-tile context and zoomed evidence PNGs for each contact; produced `notebooks/contact_viz/S1A_IW_GRDH_1SDV_20240711T140858_20240711T140923_054714_06A94E_9466_vh_c3314_r10814_det0000{_zoom}.png`.
 - Added `tests/test_detector.py` covering haversine distance and contact deduplication. Total tests now **13 passed**.
+- Fixed `darkwatch/fusion/associate.py` probability decomposition: removed the unexplained `(1 - artifact_prior)` scaling on `p_dark`; `p_clear` and `p_dark` now split the real-vessel mass conditioned on AIS evidence, so component probabilities sum to 1 by construction. REVIEW verdict is produced by thresholding when no component dominates.
 - Updated `README.md` and `DOSSIER.md` §13 Quick Commands to recommend `--pol vv,vh` and explain automatic deduplication.
 - Canonical contacts file is now `data/processed/detections_20240711/contacts.json` (1 contact, VH, conf 0.82). VV-only and VH-only outputs preserved in `data/processed/detections_20240711_vvonly/` and `data/processed/detections_20240711_vh/` for comparison.
 - **Next action:** same as before — wait for NOAA AIS download, then run `fetch_ais.py` + `fuse_contacts.py` to produce the first real dark-vessel attribution.
