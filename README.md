@@ -39,8 +39,10 @@ This is both a real-world surveillance system and a research problem in probabil
 |---|---|---|
 | Match logic | Nearest-neighbor join | **Gaussian likelihood + softmax normalization** over all nearby tracks |
 | Uncertainty | Binary match / no-match | **Four-component probabilities**: `CLEAR`, `DARK`, `ARTIFACT`, `REVIEW` |
-| Calibration | None | Explicit **coverage-gap** adjustment when no AIS exists within 2× the gate |
-| Evidence | Silent | Every verdict carries a **reasoning trail** and nearest-track metadata |
+| Calibration | None | **Brier-score / reliability evaluation** against ground-truthable labels |
+| Static objects | None | **Oil-platform / rig exclusion** shifts fixed-structure contacts to `ARTIFACT` |
+| Coverage gaps | None | Explicit adjustment when no AIS exists within 2× the gate |
+| Evidence | Silent | Every verdict carries a **reasoning trail**, nearest-track metadata, and interactive map |
 | Cost | Enterprise AIS feeds + cloud GPUs | Free/open data + **single consumer GPU** (RTX 5060 8 GB) |
 
 ---
@@ -63,36 +65,43 @@ flowchart LR
 
 ---
 
-## 🚨 First Real Result — 2024-07-11 Santa Barbara Channel
+## 🚨 Real Results — Santa Barbara Channel
 
-On the very first real run, Darkwatch found **one detectable vessel** and classified it as a **DARK candidate**:
+### 2024-07-11: the value of static-object exclusion
+
+The first detectable contact looked like a dark vessel until static-object exclusion was added. It was **58 m from Platform Irene**, so the verdict flipped to **ARTIFACT**:
 
 ```json
 {
   "contact_id": "S1A_IW_GRDH_1SDV_20240711T140858_20240711T140923_054714_06A94E_9466_vh_c3314_r10814_det0000",
-  "verdict": "DARK",
-  "p_artifact": 0.0268,
+  "verdict": "ARTIFACT",
+  "p_artifact": 0.6576,
   "p_clear": 0.0,
-  "p_dark": 0.7299,
-  "p_review": 0.2433,
-  "nearest_association": {
-    "mmsi": 367726390,
-    "vessel_name": "BERNARDINE C",
-    "distance_m": 12710.2,
-    "interpolated_lon": -120.60969,
-    "interpolated_lat": 34.55505
-  },
-  "reasoning": [
-    "No AIS track within gate radius.",
-    "No AIS tracks within 2x gate radius; reducing dark confidence due to possible coverage gap.",
-    "No AIS match within gate; contact is candidate dark vessel if real."
-  ]
+  "p_dark": 0.2568,
+  "p_review": 0.0856,
+  "static_object": {
+    "name": "Platform Irene",
+    "distance_m": 58.0,
+    "confidence": 0.7678
+  }
 }
 ```
 
-The nearest cooperative vessel, **BERNARDINE C**, was stationary/moored **12.7 km away** — too far to explain the contact. Because no AIS track exists within 4 km, the model moved ~24% of its belief from `DARK` to `REVIEW`, giving a more honest uncertainty estimate.
+Full report: [`notebooks/fusion_20240711_report.md`](notebooks/fusion_20240711_report.md).
 
-Read the full human-readable report: [`notebooks/fusion_20240711_report.md`](notebooks/fusion_20240711_report.md).
+### 2024-07-18: the first mixed verdict set
+
+A second scene produced **12 contacts** against **7 AIS tracks**:
+
+| Verdict | Count | Examples |
+|---|---|---|
+| **CLEAR** | 3 | MSC GIUSY (108 m), MSC SOFIA PAZ (308 m), RYAN T (295 m) |
+| **DARK** | 3 | No AIS within 2 km, no platform nearby |
+| **REVIEW** | 5 | Platform nearby or distant AIS, too ambiguous to call |
+| **ARTIFACT** | 1 | Platform Harvest (82 m) |
+
+Full report: [`notebooks/fusion_20240718_report.md`](notebooks/fusion_20240718_report.md).  
+Interactive map: [`notebooks/fusion_20240718_map.html`](notebooks/fusion_20240718_map.html).
 
 ---
 
@@ -151,6 +160,43 @@ python scripts/fusion_report.py \
 ```
 
 > **Note:** Copernicus Data Space credentials go in `.env` (see `scripts/fetch_first_scene.py`). All downloaded scenes, models, and data are excluded from git via `.gitignore`.
+>
+> **Scene selection tip:** use `--operational-bbox` so you don't pick a scene that is 100% ocean but misses your theater:
+> ```bash
+> python scripts/pick_ocean_scene.py --start 2024-07-01 --end 2024-07-31 \
+>   --operational-bbox "-120.8,34.3,-119.8,34.7"
+> ```
+
+---
+
+## 📊 Calibration & Visualization
+
+Darkwatch is built to be **honest about uncertainty**, not just confident.
+
+- **`scripts/evaluate_calibration.py`** compares fusion probabilities against ground-truth labels and produces:
+  - Per-class **Brier scores** (`CLEAR`, `DARK`, `ARTIFACT`).
+  - **Reliability diagrams** showing predicted probability vs observed fraction.
+  - Probability-distribution histograms by true label.
+- **`data/processed/calibration_labels.json`** is the auditable label source.
+- **`scripts/visualize_fusion.py`** creates interactive Folium maps with SAR contacts, AIS tracks, oil-platform markers, and 2 km gate circles.
+
+Run the calibration report:
+
+```bash
+python scripts/evaluate_calibration.py \
+  --labels data/processed/calibration_labels.json \
+  --output-dir notebooks/calibration
+```
+
+Generate a fusion map:
+
+```bash
+python scripts/visualize_fusion.py \
+  --contacts data/processed/detections_20240718/contacts.json \
+  --ais data/external/ais/ais_2024-07-18_clipped.csv \
+  --verdicts data/processed/fusion_20240718/verdicts.json \
+  --output notebooks/fusion_20240718_map.html
+```
 
 ---
 
@@ -200,15 +246,15 @@ darkwatch/
 | 0 | Recon & first real SAR on screen | ✅ |
 | 1 | Automated SAR ingestion & prep | ✅ |
 | 2 | Vessel detection baseline | ✅ (domain-gap follow-up tracked) |
-| 3 | **Fusion & Attribution** | ✅ Baseline real verdict produced |
+| 3 | **Fusion & Attribution** | ✅ Baseline complete: static-object exclusion, two real scenes, calibration framework, interactive maps |
 | 4 | Behavior & intent (zones, persistence, rendezvous) | ⏳ |
 | 5 | Alert & evidence dossiers | ⏳ |
 
 **Next priorities:**
-1. Static-object exclusion (oil platforms, known rigs, small islands).
-2. Run a second, busier Sentinel-1 scene to collect `CLEAR` matches for calibration.
-3. Empirical calibration: ensure `p_dark = 0.73` actually means ~73% of similar cases are dark.
-4. Larger/open SAR ship dataset fine-tuning to close SSDD→GRD domain gap.
+1. **Collect more labeled scenes** to make calibration statistically meaningful.
+2. **Empirical calibration:** ensure `p_dark = 0.73` actually means ~73% of similar cases are dark.
+3. **Close SSDD→GRD domain gap** with real GRD chips or open SAR datasets (LS-SSDD-v1.0 / HRSID).
+4. **Phase 4 behavior context:** MPA / EEZ / fishing-zone overlays and persistence tracking.
 
 ---
 
