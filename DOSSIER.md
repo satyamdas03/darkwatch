@@ -16,7 +16,7 @@
 | **Mode** | Impact-first, funding-agnostic, single-consumer-GPU research/engineering build. |
 | **Status** | Phase 2 — Vessel Detection COMPLETE; Phase 3 Fusion & Attribution — static-object exclusion shipped, two real scenes fused, calibration framework and interactive maps added; third scene downloading to grow labeled dataset |
 | **Start Date** | 2026-08-04 |
-| **Last Updated** | 2026-08-05 (calibration script + labels + report + Folium maps; 16 tests passed; July 23 scene download in progress) |
+| **Last Updated** | 2026-08-05 (scene selection fixed; wrong July 23 scene aborted; correct July 23 scene + AIS downloading; 16 tests passed) |
 | **Current Branch** | main |
 | **Git Remote** | `https://github.com/satyamdas03/darkwatch` (public, pushed 2026-08-04) |
 | **Lead Engineer** | Bull (Claude Code agent) |
@@ -206,6 +206,8 @@ darkwatch/
 - [x] **First calibration report generated:** `notebooks/calibration/calibration_report.md` from 13 labeled contacts (6 ARTIFACT, 3 CLEAR, 2 DARK, 2 UNKNOWN). Preliminary finding: model is qualitatively well-calibrated but sample size is too small for strong claims; more scenes needed.
 - [x] **Interactive fusion maps added:** `scripts/visualize_fusion.py` produces Folium maps with SAR contacts (colored by verdict), AIS tracks + SAR-time interpolated positions, oil platform markers, and 2 km gate circles. Generated `notebooks/fusion_20240718_map.html` and `notebooks/fusion_20240711_map.html`.
 - [x] **Scene scoring refreshed:** `scripts/pick_ocean_scene.py` scored all 19 July 2024 passes; top high-water candidates identified (2024-07-23T140922 at 100% water).
+- [x] **Scene selection improved:** `scripts/pick_ocean_scene.py` now accepts `--operational-bbox` and scores scenes by `water_fraction × operational_overlap`, not just overall water fraction. This prevents selecting scenes that are ocean-covered but do not actually overlap the theater of interest.
+- [x] **Calibration + maps committed and pushed:** `5651d78` pushed to `satyamdas03/darkwatch`.
   - DARK candidates: 3 contacts with no AIS within gate and no nearby platform.
 - [x] **July 18 human-readable fusion report generated:** `notebooks/fusion_20240718_report.md`.
 - [x] Unit tests pass (`pytest tests/ -q` → 16 passed).
@@ -506,6 +508,18 @@ darkwatch/
 - Re-scored all 19 July 2024 passes with `scripts/pick_ocean_scene.py`; top candidates identified (100% water on 2024-07-23T140922 and 2024-07-11T140923).
 - Started background download of `S1A_IW_GRDH_1SDV_20240723T140922_20240723T140947_054889_06AF64_20C2.SAFE` (100% water) to grow the calibration dataset.
 - **Next action:** wait for July 23 scene download, then prep → detect → fuse → label → update calibration report.
+
+### 2026-08-05 — Session #4 (in progress): scene-selection fix + correct July 23 scene
+- Downloaded and prepped the wrong July 23 scene (`...T140922...`): 0 contacts because the scene has 0% overlap with the operational bbox despite 100% overall water.
+- **Lesson:** footprint water fraction is not enough; a scene must overlap the actual theater.
+- Improved `scripts/pick_ocean_scene.py`:
+  - Added `--operational-bbox` argument.
+  - Added `_operational_overlap()` to compute footprint ∩ operational bbox fraction.
+  - Combined score = `water_fraction × operational_overlap`.
+  - Re-scored July 2024: top candidate is now `S1A_IW_GRDH_1SDV_20240723T020701_...` (94.79% water, 56.94% operational overlap, score 53.97%).
+- Started background download of the correct July 23 scene (`...T020701...`) and NOAA AIS for 2024-07-23.
+- Pushed calibration framework + maps + scene-selection fix in commit `5651d78`.
+- **Next action:** wait for correct July 23 scene + AIS download, then prep → detect → fuse → label → recalibrate.
 
 ---
 

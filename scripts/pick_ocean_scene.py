@@ -25,6 +25,24 @@ from darkwatch.adapters.copernicus_adapter import CopernicusAdapter
 from darkwatch.s1_prep.land_mask import NaturalEarthLand
 
 SANTA_BARBARA_BBOX = (-120.5, 33.8, -119.0, 34.6)
+OPERATIONAL_BBOX = (-120.8, 34.3, -119.8, 34.7)  # western Santa Barbara Channel
+
+
+def _bbox_to_polygon(bbox: tuple[float, float, float, float]) -> shapely.Geometry:
+    minx, miny, maxx, maxy = bbox
+    return shapely.geometry.Polygon(
+        [(minx, miny), (maxx, miny), (maxx, maxy), (minx, maxy), (minx, miny)]
+    )
+
+
+def _operational_overlap(footprint_geojson: dict, operational_bbox: tuple[float, float, float, float]) -> float:
+    """Fraction of the operational bbox that is covered by the scene footprint."""
+    geom = shapely.geometry.shape(footprint_geojson)
+    op_poly = _bbox_to_polygon(operational_bbox)
+    inter = geom.intersection(op_poly)
+    if op_poly.area == 0:
+        return 0.0
+    return inter.area / op_poly.area
 
 
 def _footprint_water_fraction(footprint_geojson: dict, land: shapely.Geometry, samples: int = 200) -> float:
@@ -52,6 +70,12 @@ def main() -> int:
     parser.add_argument("--start", type=str, default=None)
     parser.add_argument("--end", type=str, default=None)
     parser.add_argument("--max-results", type=int, default=50)
+    parser.add_argument(
+        "--operational-bbox",
+        type=str,
+        default=None,
+        help="Target theater bbox as W,S,E,N; scenes are scored by overlap with this bbox",
+    )
     parser.add_argument("--output", type=str, default=str(REPO_ROOT / "data" / "raw" / "s1" / "scene_scores.json"))
     args = parser.parse_args()
 
@@ -81,28 +105,47 @@ def main() -> int:
         print("No products found.")
         return 0
 
-    print(f"Scoring {len(products)} products for ocean coverage ...")
+    operational_bbox = OPERATIONAL_BBOX
+    if args.operational_bbox:
+        parts = [float(x.strip()) for x in args.operational_bbox.split(",")]
+        if len(parts) != 4:
+            raise ValueError("--operational-bbox must be W,S,E,N")
+        operational_bbox = tuple(parts)
+
+    print(f"Scoring {len(products)} products for ocean coverage and operational overlap ...")
+    print(f"  operational bbox: {operational_bbox}")
     land = NaturalEarthLand().get_land_union()
 
     scores = []
     for p in products:
         water_frac = _footprint_water_fraction(p.footprint, land, samples=400)
+        op_overlap = _operational_overlap(p.footprint, operational_bbox)
+        # Combined score: prioritize scenes that cover the operational area with open water.
+        score = water_frac * op_overlap
         scores.append({
             "id": p.product_id,
             "name": p.name,
             "start": p.start_time.isoformat(),
             "water_fraction": round(water_frac, 4),
+            "operational_overlap": round(op_overlap, 4),
+            "combined_score": round(score, 4),
             "footprint": p.footprint,
             "download_url": p.download_url,
         })
-        print(f"  {water_frac:.2%} water  {p.name}")
+        print(f"  {score:.2%} combined  {water_frac:.2%} water  {op_overlap:.2%} overlap  {p.name}")
 
-    scores.sort(key=lambda x: x["water_fraction"], reverse=True)
+    scores.sort(key=lambda x: x["combined_score"], reverse=True)
     out_path = Path(args.output)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(scores, indent=2))
     print(f"Saved scores to {out_path}")
-    print(f"Top candidate: {scores[0]['name']} ({scores[0]['water_fraction']:.2%} water)")
+    top = scores[0]
+    print(
+        f"Top candidate: {top['name']} ("
+        f"water={top['water_fraction']:.2%}, "
+        f"overlap={top['operational_overlap']:.2%}, "
+        f"score={top['combined_score']:.2%})"
+    )
     return 0
 
 
