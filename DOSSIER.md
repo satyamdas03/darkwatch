@@ -14,9 +14,9 @@
 | **Tagline** | A radar contact with no transponder is either noise, a rig, a mismatch — or a ship that chose to disappear. Darkwatch decides which, and says how sure it is. |
 | **Goal** | Build a maritime surveillance system that detects vessels that have deliberately switched off AIS, by fusing free Sentinel-1 SAR imagery with AIS broadcasts, and produces calibrated, auditable dark-vessel verdicts. |
 | **Mode** | Impact-first, funding-agnostic, single-consumer-GPU research/engineering build. |
-| **Status** | Phase 2 — Vessel Detection COMPLETE; Phase 3 Fusion & Attribution — static-object exclusion shipped, two real scenes fused, calibration framework and interactive maps added; third scene downloading to grow labeled dataset |
+| **Status** | Phase 2 — Vessel Detection COMPLETE (domain-gap limiting recall); Phase 3 Fusion & Attribution — static-object exclusion shipped, three real scenes fused, calibration framework and interactive maps added; 15 labeled calibration contacts |
 | **Start Date** | 2026-08-04 |
-| **Last Updated** | 2026-08-05 (scene selection fixed; wrong July 23 scene aborted; correct July 23 scene + AIS downloading; 16 tests passed) |
+| **Last Updated** | 2026-08-05 (correct July 23 scene fused; calibration report updated; 16 tests passed) |
 | **Current Branch** | main |
 | **Git Remote** | `https://github.com/satyamdas03/darkwatch` (public, pushed 2026-08-04) |
 | **Lead Engineer** | Bull (Claude Code agent) |
@@ -208,6 +208,15 @@ darkwatch/
 - [x] **Scene scoring refreshed:** `scripts/pick_ocean_scene.py` scored all 19 July 2024 passes; top high-water candidates identified (2024-07-23T140922 at 100% water).
 - [x] **Scene selection improved:** `scripts/pick_ocean_scene.py` now accepts `--operational-bbox` and scores scenes by `water_fraction × operational_overlap`, not just overall water fraction. This prevents selecting scenes that are ocean-covered but do not actually overlap the theater of interest.
 - [x] **Calibration + maps committed and pushed:** `5651d78` pushed to `satyamdas03/darkwatch`.
+- [x] **Third real scene acquired and processed (2024-07-23, correct pass):**
+  - Downloaded `S1A_IW_GRDH_1SDV_20240723T020701_20240723T020726_054882_06AF26_69FC.SAFE` after scene-selection fix.
+  - Produced 24 tiles (12 VV + 12 VH) at `data/processed/s1a_20240723_channel/`.
+  - Detector found **2 unique contacts** near (-120.79, 34.71) using `--db-lo -30 --db-hi -10`.
+- [x] **NOAA AIS re-fetched for 2024-07-23 with correct SAR time window:** 591 clipped rows → **8 AIS tracks**.
+- [x] **Third real fusion run completed:** `data/processed/fusion_20240723/verdicts.json` verdict counts: **DARK 2**.
+  - Both contacts are small vessels with no AIS within 2 km and no platform nearby; nearest AIS **BERNARDINE C** is 24 km away.
+- [x] **July 23 fusion report and map generated:** `notebooks/fusion_20240723_report.md` and `notebooks/fusion_20240723_map.html`.
+- [x] **Calibration dataset expanded:** `data/processed/calibration_labels.json` now has 15 labeled contacts (6 ARTIFACT, 3 CLEAR, 4 DARK, 2 UNKNOWN); calibration report regenerated.
   - DARK candidates: 3 contacts with no AIS within gate and no nearby platform.
 - [x] **July 18 human-readable fusion report generated:** `notebooks/fusion_20240718_report.md`.
 - [x] Unit tests pass (`pytest tests/ -q` → 16 passed).
@@ -509,17 +518,22 @@ darkwatch/
 - Started background download of `S1A_IW_GRDH_1SDV_20240723T140922_20240723T140947_054889_06AF64_20C2.SAFE` (100% water) to grow the calibration dataset.
 - **Next action:** wait for July 23 scene download, then prep → detect → fuse → label → update calibration report.
 
-### 2026-08-05 — Session #4 (in progress): scene-selection fix + correct July 23 scene
-- Downloaded and prepped the wrong July 23 scene (`...T140922...`): 0 contacts because the scene has 0% overlap with the operational bbox despite 100% overall water.
+### 2026-08-05 — Session #4: scene-selection fix + correct July 23 scene + 2 more DARK labels
+- Downloaded and prepped the wrong July 23 scene (`...T140922...`) first: 0 contacts because the scene has 0% overlap with the operational bbox despite 100% overall water.
 - **Lesson:** footprint water fraction is not enough; a scene must overlap the actual theater.
 - Improved `scripts/pick_ocean_scene.py`:
   - Added `--operational-bbox` argument.
   - Added `_operational_overlap()` to compute footprint ∩ operational bbox fraction.
   - Combined score = `water_fraction × operational_overlap`.
   - Re-scored July 2024: top candidate is now `S1A_IW_GRDH_1SDV_20240723T020701_...` (94.79% water, 56.94% operational overlap, score 53.97%).
-- Started background download of the correct July 23 scene (`...T020701...`) and NOAA AIS for 2024-07-23.
-- Pushed calibration framework + maps + scene-selection fix in commit `5651d78`.
-- **Next action:** wait for correct July 23 scene + AIS download, then prep → detect → fuse → label → recalibrate.
+- Downloaded and prepped the correct July 23 scene (`S1A_IW_GRDH_1SDV_20240723T020701_20240723T020726_054882_06AF26_69FC.SAFE`) at 02:07 UTC; produced 24 tiles (12 VV + 12 VH).
+- Re-fetched NOAA AIS for 2024-07-23 with the correct SAR time window; got 591 clipped rows / 8 usable tracks.
+- Detector found **2 unique contacts** near (-120.79, 34.71) after trying several dB contrast stretches; the default stretch produced 0 contacts, highlighting the SSDD→GRD domain-gap.
+- Fused July 23 contacts with AIS: both labeled **DARK** (p_dark ≈ 0.70, p_review ≈ 0.23); nearest AIS track **BERNARDINE C** was 24 km away.
+- Generated `notebooks/fusion_20240723_report.md` and `notebooks/fusion_20240723_map.html`.
+- Added the 2 July 23 contacts to `data/processed/calibration_labels.json` as DARK labels.
+- Regenerated calibration report: now **15 labeled contacts** (6 ARTIFACT, 3 CLEAR, 4 DARK, 2 UNKNOWN); Brier scores slightly improved for DARK class.
+- **Next action:** collect more scenes with heavy traffic to get more CLEAR labels, and more platform-rich passes to get more ARTIFACT labels. Continue detector improvement work (SSDD→GRD domain gap is the main throughput bottleneck).
 
 ---
 

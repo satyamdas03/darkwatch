@@ -7,6 +7,10 @@
     {
       "name": "2024-07-18",
       "verdicts": "data/processed/fusion_20240718/verdicts.json"
+    },
+    {
+      "name": "2024-07-23",
+      "verdicts": "data/processed/fusion_20240723/verdicts.json"
     }
   ],
   "labels": [
@@ -74,6 +78,16 @@
       "contact_id": "S1A_IW_GRDH_1SDV_20240718T015853_20240718T015918_054809_06ACA2_D01B_vh_c9548_r7947_det0001",
       "label": "DARK",
       "note": "No AIS within gate; no platform within 250 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240723T020701_20240723T020726_054882_06AF26_69FC_vh_c21010_r14232_det0000",
+      "label": "DARK",
+      "note": "No AIS within gate; no platform within 250 m; small contact 68m x 37m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240723T020701_20240723T020726_054882_06AF26_69FC_vh_c21010_r14232_det0001",
+      "label": "DARK",
+      "note": "No AIS within gate; no platform within 250 m; small contact 46m x 15m"
     }
   ]
 }

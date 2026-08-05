@@ -1,7 +1,7 @@
 # Darkwatch Calibration Report
 
-**Generated:** 2026-08-05T23:26:49.535055Z
-**Labeled contacts:** 13
+**Generated:** 2026-08-05T23:52:03.872198Z
+**Labeled contacts:** 15
 **Label source:** `data/processed/calibration_labels.json`
 
 ---
@@ -10,7 +10,7 @@
 
 - **ARTIFACT:** 6
 - **CLEAR:** 3
-- **DARK:** 2
+- **DARK:** 4
 - **UNKNOWN:** 2
 
 ---
@@ -19,38 +19,38 @@
 
 ### DARK
 
-- Labeled positives: 2
-- Mean predicted p_dark: 0.3879
-- Brier score: 0.1288
+- Labeled positives: 4
+- Mean predicted p_dark: 0.4293
+- Brier score: 0.1237
 
 | Predicted probability bin | Count | Observed DARK fraction | Mean predicted |
 |---|---|---|---|
 | 0.00 – 0.20 | 2 | 0.000 | 0.152 |
 | 0.20 – 0.40 | 4 | 0.000 | 0.261 |
 | 0.40 – 0.60 | 4 | 0.000 | 0.430 |
-| 0.60 – 0.80 | 3 | 0.667 | 0.658 |
+| 0.60 – 0.80 | 5 | 0.800 | 0.674 |
 
 ### CLEAR
 
 - Labeled positives: 3
-- Mean predicted p_clear: 0.2036
-- Brier score: 0.0347
+- Mean predicted p_clear: 0.1765
+- Brier score: 0.0301
 
 | Predicted probability bin | Count | Observed CLEAR fraction | Mean predicted |
 |---|---|---|---|
-| 0.00 – 0.20 | 9 | 0.000 | 0.000 |
+| 0.00 – 0.20 | 11 | 0.000 | 0.000 |
 | 0.40 – 0.60 | 1 | 0.000 | 0.467 |
 | 0.60 – 0.80 | 3 | 1.000 | 0.727 |
 
 ### ARTIFACT
 
 - Labeled positives: 6
-- Mean predicted p_artifact: 0.2977
-- Brier score: 0.1481
+- Mean predicted p_artifact: 0.2671
+- Brier score: 0.1290
 
 | Predicted probability bin | Count | Observed ARTIFACT fraction | Mean predicted |
 |---|---|---|---|
-| 0.00 – 0.20 | 6 | 0.000 | 0.099 |
+| 0.00 – 0.20 | 8 | 0.000 | 0.092 |
 | 0.40 – 0.60 | 6 | 0.833 | 0.436 |
 | 0.60 – 0.80 | 1 | 1.000 | 0.658 |
 
@@ -62,7 +62,7 @@
 |---|---|---|
 | ARTIFACT | ARTIFACT | 2 |
 | CLEAR | CLEAR | 3 |
-| DARK | DARK | 2 |
+| DARK | DARK | 4 |
 | DARK | UNKNOWN | 1 |
 | REVIEW | ARTIFACT | 4 |
 | REVIEW | UNKNOWN | 1 |
@@ -72,7 +72,7 @@
 ## 4. Key Findings
 
 - A well-calibrated model has Brier scores near 0 and reliability points hugging the diagonal.
-- With only 13 labeled contacts, these metrics are noisy; collecting more scenes is the top priority.
+- With only 15 labeled contacts, these metrics are noisy; collecting more scenes is the top priority.
 - The current model tends to assign moderate `p_dark` and `p_artifact` to platform-adjacent contacts; strong ARTIFACT labels (near platforms) help validate whether those probabilities are too low or too high.
 
 ---
@@ -94,6 +94,8 @@
 | `54809_06ACA2_D01B_vh_c5964_r7947_det0000` | 2024-07-18 | ARTIFACT | REVIEW | 0.4212 | 0.0000 | 0.4341 | 0.1447 | 10892 | Platform Heritage |
 | `54809_06ACA2_D01B_vh_c5964_r8843_det0000` | 2024-07-18 | DARK | DARK | 0.0958 | 0.0000 | 0.6782 | 0.2261 | 13803 | — |
 | `54809_06ACA2_D01B_vh_c9548_r7947_det0001` | 2024-07-18 | DARK | DARK | 0.1012 | 0.0000 | 0.6741 | 0.2247 | 9086 | — |
+| `882_06AF26_69FC_vh_c21010_r14232_det0000` | 2024-07-23 | DARK | DARK | 0.0676 | 0.0000 | 0.6993 | 0.2331 | 23994 | — |
+| `882_06AF26_69FC_vh_c21010_r14232_det0001` | 2024-07-23 | DARK | DARK | 0.0688 | 0.0000 | 0.6984 | 0.2328 | 24021 | — |
 
 ---
 
