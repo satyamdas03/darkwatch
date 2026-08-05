@@ -8,6 +8,8 @@ __pycache__/
 .ruff_cache/
 *.log
 .ipynb_checkpoints/
+# Exception: calibration labels are small and needed to reproduce the report
+!data/processed/calibration_labels.json
 # Large downloaded / generated data (keep broad + specific for clarity)
 data/
 data/raw/s1/*.zip
@@ -21,6 +23,7 @@ data/external/*.exe
 data/external/*.msi
 data/external/7za_dir/
 data/processed/*/
+!data/processed/calibration_labels.json
 # Models and base weights
 models/
 yolov8n.pt

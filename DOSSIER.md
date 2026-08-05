@@ -14,9 +14,9 @@
 | **Tagline** | A radar contact with no transponder is either noise, a rig, a mismatch — or a ship that chose to disappear. Darkwatch decides which, and says how sure it is. |
 | **Goal** | Build a maritime surveillance system that detects vessels that have deliberately switched off AIS, by fusing free Sentinel-1 SAR imagery with AIS broadcasts, and produces calibrated, auditable dark-vessel verdicts. |
 | **Mode** | Impact-first, funding-agnostic, single-consumer-GPU research/engineering build. |
-| **Status** | Phase 2 — Vessel Detection COMPLETE; Phase 3 Fusion & Attribution — static-object exclusion shipped and two real scenes fused (12 contacts, 3 CLEAR, 5 REVIEW, 3 DARK, 1 ARTIFACT) |
+| **Status** | Phase 2 — Vessel Detection COMPLETE; Phase 3 Fusion & Attribution — static-object exclusion shipped, two real scenes fused, calibration framework and interactive maps added; third scene downloading to grow labeled dataset |
 | **Start Date** | 2026-08-04 |
-| **Last Updated** | 2026-08-05 (static-object exclusion + July 18 second-scene fusion; 15 tests passed; pending empirical calibration of p_dark / p_clear) |
+| **Last Updated** | 2026-08-05 (calibration script + labels + report + Folium maps; 16 tests passed; July 23 scene download in progress) |
 | **Current Branch** | main |
 | **Git Remote** | `https://github.com/satyamdas03/darkwatch` (public, pushed 2026-08-04) |
 | **Lead Engineer** | Bull (Claude Code agent) |
@@ -202,6 +202,10 @@ darkwatch/
 - [x] **Second real fusion run completed:** `data/processed/fusion_20240718/verdicts.json` verdict counts: **CLEAR 3, REVIEW 5, DARK 3, ARTIFACT 1**.
   - CLEAR matches: MSC GIUSY (108 m), MSC SOFIA PAZ (308 m), RYAN T (295 m).
   - Strong ARTIFACT: Platform Harvest (82 m), p_artifact=0.50.
+- [x] **Calibration evaluation framework added:** `scripts/evaluate_calibration.py` + `data/processed/calibration_labels.json` produce per-class Brier scores, reliability diagrams, and probability-distribution plots.
+- [x] **First calibration report generated:** `notebooks/calibration/calibration_report.md` from 13 labeled contacts (6 ARTIFACT, 3 CLEAR, 2 DARK, 2 UNKNOWN). Preliminary finding: model is qualitatively well-calibrated but sample size is too small for strong claims; more scenes needed.
+- [x] **Interactive fusion maps added:** `scripts/visualize_fusion.py` produces Folium maps with SAR contacts (colored by verdict), AIS tracks + SAR-time interpolated positions, oil platform markers, and 2 km gate circles. Generated `notebooks/fusion_20240718_map.html` and `notebooks/fusion_20240711_map.html`.
+- [x] **Scene scoring refreshed:** `scripts/pick_ocean_scene.py` scored all 19 July 2024 passes; top high-water candidates identified (2024-07-23T140922 at 100% water).
   - DARK candidates: 3 contacts with no AIS within gate and no nearby platform.
 - [x] **July 18 human-readable fusion report generated:** `notebooks/fusion_20240718_report.md`.
 - [x] Unit tests pass (`pytest tests/ -q` → 16 passed).
@@ -492,6 +496,16 @@ darkwatch/
 - Ran tests: `pytest tests/ -q` → **16 passed**.
 - Updated `DOSSIER.md` with all new milestones.
 - **Next action:** empirical calibration of component probabilities using the new CLEAR/ARTIFACT/DARK labels, and begin collecting additional scenes to build a calibration dataset.
+
+### 2026-08-05 — Session #3: calibration framework + interactive maps + next scene download
+- Built `scripts/evaluate_calibration.py` and `data/processed/calibration_labels.json` (13 labeled contacts: 6 ARTIFACT, 3 CLEAR, 2 DARK, 2 UNKNOWN).
+- Generated first calibration report at `notebooks/calibration/calibration_report.md` with per-class Brier scores and reliability diagrams.
+  - Preliminary finding: model is directionally correct (CLEAR contacts get high `p_clear`, ARTIFACT contacts get moderate/high `p_artifact`, DARK candidates get high `p_dark`) but sample size is too small for strong calibration claims.
+- Built `scripts/visualize_fusion.py` with Folium: SAR contacts colored by verdict, AIS track lines, interpolated SAR-time positions, oil platform markers, and 2 km gate circles.
+- Generated `notebooks/fusion_20240718_map.html` and `notebooks/fusion_20240711_map.html`.
+- Re-scored all 19 July 2024 passes with `scripts/pick_ocean_scene.py`; top candidates identified (100% water on 2024-07-23T140922 and 2024-07-11T140923).
+- Started background download of `S1A_IW_GRDH_1SDV_20240723T140922_20240723T140947_054889_06AF64_20C2.SAFE` (100% water) to grow the calibration dataset.
+- **Next action:** wait for July 23 scene download, then prep → detect → fuse → label → update calibration report.
 
 ---
 

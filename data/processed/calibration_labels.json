@@ -1,0 +1,79 @@
+{
+  "scenes": [
+    {
+      "name": "2024-07-11",
+      "verdicts": "data/processed/fusion_20240711/verdicts.json"
+    },
+    {
+      "name": "2024-07-18",
+      "verdicts": "data/processed/fusion_20240718/verdicts.json"
+    }
+  ],
+  "labels": [
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240711T140858_20240711T140923_054714_06A94E_9466_vh_c3314_r10814_det0000",
+      "label": "ARTIFACT",
+      "note": "58 m from Platform Irene; no AIS within gate"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240718T015853_20240718T015918_054809_06ACA2_D01B_vh_c2380_r8843_det0000",
+      "label": "CLEAR",
+      "note": "MSC GIUSY AIS match 108 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240718T015853_20240718T015918_054809_06ACA2_D01B_vh_c5068_r7947_det0000",
+      "label": "CLEAR",
+      "note": "MSC SOFIA PAZ AIS match 308 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240718T015853_20240718T015918_054809_06ACA2_D01B_vh_c6860_r7947_det0000",
+      "label": "UNKNOWN",
+      "note": "JACKIE C AIS match 432 m + Platform Harmony 126 m; ambiguous"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240718T015853_20240718T015918_054809_06ACA2_D01B_vh_c9548_r7947_det0000",
+      "label": "UNKNOWN",
+      "note": "No AIS within gate; Platform Holly 205 m away"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240718T015853_20240718T015918_054809_06ACA2_D01B_vh_c2380_r9739_det0000",
+      "label": "ARTIFACT",
+      "note": "Platform Harvest 82 m away"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240718T015853_20240718T015918_054809_06ACA2_D01B_vh_c2380_r11531_det0000",
+      "label": "ARTIFACT",
+      "note": "Platform Irene 119 m away"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240718T015853_20240718T015918_054809_06ACA2_D01B_vh_c2380_r9739_det0001",
+      "label": "ARTIFACT",
+      "note": "Platform Hidalgo 100 m away"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240718T015853_20240718T015918_054809_06ACA2_D01B_vh_c7756_r7947_det0000",
+      "label": "CLEAR",
+      "note": "RYAN T AIS match 295 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240718T015853_20240718T015918_054809_06ACA2_D01B_vh_c2380_r9739_det0002",
+      "label": "ARTIFACT",
+      "note": "Platform Hermosa 96 m away"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240718T015853_20240718T015918_054809_06ACA2_D01B_vh_c5964_r7947_det0000",
+      "label": "ARTIFACT",
+      "note": "Platform Heritage 94 m away"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240718T015853_20240718T015918_054809_06ACA2_D01B_vh_c5964_r8843_det0000",
+      "label": "DARK",
+      "note": "No AIS within gate; no platform within 250 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240718T015853_20240718T015918_054809_06ACA2_D01B_vh_c9548_r7947_det0001",
+      "label": "DARK",
+      "note": "No AIS within gate; no platform within 250 m"
+    }
+  ]
+}
