@@ -16,6 +16,7 @@ import numpy as np
 
 from ..detect.contact import Contact
 from .ais import AISTrack, _haversine_m
+from .static_objects import StaticObject, StaticObjectHit, check_contact
 from .verdict import Verdict
 
 # Default gate radius (m). AIS tracks farther than this from a contact cannot
@@ -63,6 +64,7 @@ class ContactVerdict:
     nearest_association: TrackAssociation | None = None
     n_tracks_within_gate: int = 0
     n_tracks_near_gate: int = 0  # within 2x gate but outside
+    static_object_hit: StaticObjectHit | None = None
     reasoning: list[str] = field(default_factory=list)
 
     @property
@@ -100,6 +102,7 @@ def associate_contact(
     t_sar: datetime | None = None,
     gate_radius_m: float = DEFAULT_GATE_RADIUS_M,
     max_extrapolate_s: float = 600.0,
+    check_static_objects: bool = True,
 ) -> ContactVerdict:
     """Compute the fusion verdict for a single SAR contact.
 
@@ -181,6 +184,20 @@ def associate_contact(
     p_real_vessel = float(contact.confidence)
     p_artifact = (1.0 - p_real_vessel) * DEFAULT_ARTIFACT_PRIOR
 
+    # Static-object exclusion: if the contact sits on a known fixed object
+    # (oil platform, rig, small island), shift real-vessel mass to artifact.
+    static_hit = check_contact(contact) if check_static_objects else StaticObjectHit(False, None, float("inf"), 0.0)
+    if static_hit.hit and static_hit.confidence > 0.0:
+        # Shift real-vessel mass to artifact proportionally to static confidence.
+        artifact_boost = p_real_vessel * static_hit.confidence
+        p_artifact += artifact_boost
+        p_real_vessel *= (1.0 - static_hit.confidence)
+        reasoning.append(
+            f"Static object nearby: {static_hit.object.name} "
+            f"({static_hit.distance_m:.0f} m away); "
+            f"shifting {artifact_boost:.3f} probability to artifact."
+        )
+
     # Remaining real-vessel mass is split between clear and dark according to
     # the AIS evidence. Capture the AIS-derived match probability first so it
     # is not corrupted by the rescaling on the next line.
@@ -241,6 +258,7 @@ def associate_contact(
         nearest_association=nearest_association,
         n_tracks_within_gate=n_tracks_within_gate,
         n_tracks_near_gate=n_tracks_near_gate,
+        static_object_hit=static_hit,
         reasoning=reasoning,
     )
 

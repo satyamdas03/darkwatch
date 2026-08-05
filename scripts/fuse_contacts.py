@@ -106,6 +106,15 @@ def main() -> int:
             "p_match": round(a.likelihood, 4),
         }
 
+    def _static_dict(s):
+        if s is None or not s.hit:
+            return None
+        return {
+            "name": s.object.name if s.object else None,
+            "distance_m": round(s.distance_m, 1),
+            "confidence": round(s.confidence, 4),
+        }
+
     results = []
     for v in verdicts:
         results.append(
@@ -120,6 +129,7 @@ def main() -> int:
                 "n_tracks_near_gate": v.n_tracks_near_gate,
                 "best_association": _assoc_dict(v.best_association),
                 "nearest_association": _assoc_dict(v.nearest_association),
+                "static_object": _static_dict(v.static_object_hit),
                 "reasoning": v.reasoning,
             }
         )

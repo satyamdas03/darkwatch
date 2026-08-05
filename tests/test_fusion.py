@@ -16,6 +16,7 @@ from darkwatch.fusion import (
     Verdict,
     associate_all_contacts,
     associate_contact,
+    check_contact,
     load_ais_csv,
 )
 
@@ -106,15 +107,17 @@ def test_ais_track_interpolates_to_sar_time():
 
 def test_associate_contact_clear_when_near_track():
     # AIS track runs straight through the contact location.
+    # Use coordinates far from Platform Irene so static-object exclusion does
+    # not override the CLEAR verdict.
     df = pd.DataFrame(
         [
-            {"BaseDateTime": "2024-07-11T14:08:00Z", "LAT": 34.61, "LON": -120.73, "SOG": 10.0},
-            {"BaseDateTime": "2024-07-11T14:10:00Z", "LAT": 34.61, "LON": -120.73, "SOG": 10.0},
+            {"BaseDateTime": "2024-07-11T14:08:00Z", "LAT": 34.55, "LON": -120.60, "SOG": 10.0},
+            {"BaseDateTime": "2024-07-11T14:10:00Z", "LAT": 34.55, "LON": -120.60, "SOG": 10.0},
         ]
     )
     df["BaseDateTime"] = pd.to_datetime(df["BaseDateTime"], utc=True)
     track = AISTrack(mmsi=123456789, messages=df)
-    contact = _contact_at(-120.73, 34.61, confidence=0.9)
+    contact = _contact_at(-120.60, 34.55, confidence=0.9)
     verdict = associate_contact(contact, [track])
     assert verdict.verdict == Verdict.CLEAR
     assert verdict.p_clear > verdict.p_dark
@@ -186,3 +189,25 @@ def test_associate_all_contacts_returns_one_per_contact():
     contacts = [_contact_at(-120.73, 34.61), _contact_at(-120.78, 34.61)]
     verdicts = associate_all_contacts(contacts, [track])
     assert len(verdicts) == 2
+
+
+def test_static_object_detection_flags_platform_irene():
+    """Platform Irene is at ~34.6104, -120.7304 — right on our contact."""
+    contact = _contact_at(-120.73098060772287, 34.61066898035256, confidence=0.82)
+    hit = check_contact(contact)
+    assert hit.hit
+    assert hit.object is not None
+    assert "Irene" in hit.object.name
+    assert hit.distance_m < 100.0
+    assert hit.confidence > 0.5
+
+
+def test_static_object_shifts_verdict_to_artifact():
+    """A contact on Platform Irene should lose most of its dark probability."""
+    contact = _contact_at(-120.73098060772287, 34.61066898035256, confidence=0.82)
+    verdict = associate_contact(contact, [], check_static_objects=True)
+    assert verdict.verdict == Verdict.ARTIFACT
+    assert verdict.p_artifact > 0.5
+    assert verdict.static_object_hit is not None
+    assert verdict.static_object_hit.hit
+    assert any("Irene" in r for r in verdict.reasoning)
