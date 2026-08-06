@@ -14,7 +14,7 @@
 | **Tagline** | A radar contact with no transponder is either noise, a rig, a mismatch — or a ship that chose to disappear. Darkwatch decides which, and says how sure it is. |
 | **Goal** | Build a maritime surveillance system that detects vessels that have deliberately switched off AIS, by fusing free Sentinel-1 SAR imagery with AIS broadcasts, and produces calibrated, auditable dark-vessel verdicts. |
 | **Mode** | Impact-first, funding-agnostic, single-consumer-GPU research/engineering build. |
-| **Status** | Phase 2 — Vessel Detection COMPLETE (domain-gap limiting recall); Phase 3 Fusion & Attribution — static-object exclusion shipped, three real scenes fused, calibration framework and interactive maps added; 15 labeled calibration contacts |
+| **Status** | Phase 2 — Vessel Detection COMPLETE (SSDD→GRD domain gap is the main throughput bottleneck); Phase 3 Fusion & Attribution — baseline COMPLETE: static-object exclusion + three real scenes fused (CLEAR 3, REVIEW 5, DARK 3, ARTIFACT 1), calibration framework + interactive maps, 15 labeled calibration contacts; detector improvement is the next unlock |
 | **Start Date** | 2026-08-04 |
 | **Last Updated** | 2026-08-05 (correct July 23 scene fused; calibration report updated; 16 tests passed) |
 | **Current Branch** | main |
@@ -220,6 +220,11 @@ darkwatch/
   - DARK candidates: 3 contacts with no AIS within gate and no nearby platform.
 - [x] **July 18 human-readable fusion report generated:** `notebooks/fusion_20240718_report.md`.
 - [x] Unit tests pass (`pytest tests/ -q` → 16 passed).
+- [x] **Calibration labels now tracked in git:** added `.gitignore` exception `!data/processed/calibration_labels.json` and force-added the file so the auditable label source is versioned.
+- [x] **README updated:** added Calibration & Visualization section, real results for July 11/18, scene-selection tip, revised roadmap, and clarified detector domain-gap as the next bottleneck.
+- [x] **July 18 human-readable fusion report generated:** `notebooks/fusion_20240718_report.md`.
+- [x] **July 23 contact evidence PNGs generated:** `notebooks/contact_viz_20240723/`.
+- [x] **All work committed and pushed** as `61a1dc5` to `satyamdas03/darkwatch`.
 
 ### 6.1 Test Theater — Final Choice
 
@@ -255,8 +260,8 @@ darkwatch/
 |---|---|---|---|---|---|
 | 0 | **Recon & first light** | Get real SAR onto the screen; pick test theater | ✅ Complete | Bull | Copernicus + NOAA verified; first scene calibrated and viewed |
 | 1 | **SAR Ingestion & Prep (S1)** | Scenes → analysis-ready tiles, automatically | ✅ Complete | Bull | `prep_s1.py`; land-mask → tile pipeline validated on ocean scene |
-| 2 | **Vessel Detection (S2)** | Scene in, clean contacts out | ✅ Complete (baseline) | Bull | YOLOv8n trained; dB→uint8 preprocessing fixes inference; low recall due to SSDD→GRD domain gap — improvement tracked as follow-up |
-| 3 | **Fusion & Attribution (S3)** ★ | Calibrated dark-vessel attribution | ✅ Baseline complete | Bull | First real DARK verdict produced; calibration/validation now make-or-break |
+| 2 | **Vessel Detection (S2)** | Scene in, clean contacts out | ✅ Complete (baseline) | Bull | YOLOv8n trained; dB→uint8 preprocessing fixes inference; default stretch finds 0 contacts on July 23; looser stretch recovers 2; SSDD→GRD domain gap is the main throughput bottleneck |
+| 3 | **Fusion & Attribution (S3)** ★ | Calibrated dark-vessel attribution | ✅ Baseline complete | Bull | Three scenes fused; 15 labeled contacts; calibration framework live; more CLEAR/ARTIFACT labels needed for strong empirical calibration |
 | 4 | **Behavior & Intent (S4)** | Ranked alerts with context | ⏳ Pending | Bull | Use GFW + public zone data |
 | 5 | **Evidence Layer (S5)** | Auditable dossiers + validation | ⏳ Pending | Bull | Write up method |
 
@@ -298,6 +303,8 @@ darkwatch/
 | 2026-08-04 | Document git root discovery: repo root is `C:/Users/point`, whole `darkwatch/` directory is untracked | Fresh-session forensic check revealed no darkwatch commits and parent-repo status | Must be resolved before relying on git for state recovery. |
 | 2026-08-05 | Implement static-object exclusion using California OSPR oil platform dataset | First real contact was 58 m from Platform Irene; fixed structures explain many false dark-vessel candidates | Shifts platform-adjacent contacts toward ARTIFACT/REVIEW and prevents false dark-vessel accusations. |
 | 2026-08-05 | Run a second Sentinel-1 scene (2024-07-18) to collect CLEAR and ARTIFACT calibration cases | Single-contact Jul 11 scene cannot validate p_clear / p_artifact | 12 contacts, 3 CLEAR, 5 REVIEW, 3 DARK, 1 ARTIFACT — now have ground-truthable positive and negative examples. |
+| 2026-08-05 | Improve scene selection with operational bbox overlap | First July 23 candidate had 100% water but 0% theater overlap, wasting a download/prep cycle | Combined score = `water_fraction × operational_overlap`; top correct pass found 94.79% water, 56.94% overlap |
+| 2026-08-05 | Force-track `data/processed/calibration_labels.json` in git despite broad `data/` gitignore | Auditable labels are part of the method and must survive cleanups / new sessions | Added `.gitignore` exception `!data/processed/calibration_labels.json` and `git add -f` |
 
 ---
 
@@ -321,8 +328,9 @@ darkwatch/
 | 2026-08-04 | ✅ RESOLVED — First real dark-vessel attribution verdict produced (DARK, p=0.9732) | — | Bull |
 | 2026-08-04 | ✅ RESOLVED — Public GitHub repo `satyamdas03/darkwatch` created and pushed | — | Bull |
 | 2026-08-04 | ✅ RESOLVED — GitHub profile README repo `satyamdas03/satyamdas03` created and pushed | — | Bull |
-| 2026-08-05 | Validate/calibrate S3 probabilities on ground-truthable cases | High — now have CLEAR + ARTIFACT cases from Jul 18; empirical calibration is next | Bull |
-| 2026-08-05 | Address SSDD→GRD domain gap to improve detector recall | Medium — needed before operational scale; options: LS-SSDD-v1.0, HRSID, real GRD chips, larger backbone, CFAR fallback | Bull |
+| 2026-08-05 | ✅ Baseline calibration framework shipped (`scripts/evaluate_calibration.py` + 15 labels) | High — empirical calibration now needs more scenes, especially CLEAR/ARTIFACT, to reach statistical confidence | Bull |
+| 2026-08-05 | ⚠️ WATCH — SSDD→GRD domain gap is the main throughput bottleneck (0 contacts on Jul 23 default stretch, 2 with looser stretch) | High — limits contacts per scene and therefore calibration data volume; options: real GRD chips, LS-SSDD-v1.0, HRSID, CFAR fallback, larger backbone | Bull |
+| 2026-08-05 | ✅ All work committed/pushed: `61a1dc5` | — | Bull |
 
 ---
 
@@ -534,6 +542,18 @@ darkwatch/
 - Added the 2 July 23 contacts to `data/processed/calibration_labels.json` as DARK labels.
 - Regenerated calibration report: now **15 labeled contacts** (6 ARTIFACT, 3 CLEAR, 4 DARK, 2 UNKNOWN); Brier scores slightly improved for DARK class.
 - **Next action:** collect more scenes with heavy traffic to get more CLEAR labels, and more platform-rich passes to get more ARTIFACT labels. Continue detector improvement work (SSDD→GRD domain gap is the main throughput bottleneck).
+
+### 2026-08-05 — Session #5: documentation + state consolidation
+- Updated `README.md` with a Calibration & Visualization section, real results for July 11/18, scene-selection tip, and revised roadmap that foregrounds detector improvement.
+- Force-tracked `data/processed/calibration_labels.json` by adding `!data/processed/calibration_labels.json` to `.gitignore` and using `git add -f`.
+- Confirmed all generated artifacts are on disk:
+  - `notebooks/calibration/calibration_report.md` (15 labels)
+  - `notebooks/fusion_20240718_report.md` and `notebooks/fusion_20240723_report.md`
+  - `notebooks/fusion_20240711_map.html`, `notebooks/fusion_20240718_map.html`, `notebooks/fusion_20240723_map.html`
+  - `notebooks/contact_viz_20240723/`
+- Refreshed `DOSSIER.md` project identity, current state, decisions, blockers, and session log.
+- Committed and pushed all changes as `61a1dc5` to `satyamdas03/darkwatch`.
+- **Status after this consolidation:** Phase 3 baseline is locked; the next high-impact work is detector improvement to close the SSDD→GRD domain gap.
 
 ---
 
