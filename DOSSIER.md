@@ -605,7 +605,7 @@ darkwatch/
 - **Status:** SSDD→GRD domain gap **closed** for the current test theater. The detector now finds both bright channel traffic and the small, low-backscatter July 23 dark vessels.
 - **Tests pass:** `python -m pytest -q` → 16 passed.
 - **Next unlock:** scale Phase 3 calibration. Re-run July 11/18/23 fusion with the v4 detector + adaptive stretch, collect additional scenes for CLEAR/ARTIFACT/DARK labels, and empirically validate the calibration curve.
-- **Committed and pushed:** pending — commit message `darkwatch: v4 closes July 23 weak-target recall regression`.
+- **Committed and pushed:** `7fefd65` to `satyamdas03/darkwatch` with message `darkwatch: v4 closes July 23 weak-target recall regression`.
 
 ### 2026-08-08 — Session #6: closing the SSDD→GRD detector domain gap
 - **Goal:** train a detector that generalizes from SSDD to real Sentinel-1 GRD by mixing real GRD training chips back into the dataset.
