@@ -157,13 +157,13 @@ def _plot_probability_distribution(records: list[dict], output_path: Path) -> No
     plt.close(fig)
 
 
-def _build_report(data: dict, output_dir: Path, n_bins: int) -> str:
+def _build_report(data: dict, output_dir: Path, n_bins: int, labels_path: Path) -> str:
     records = data["records"]
     md = f"""# Darkwatch Calibration Report
 
 **Generated:** {data['generated_at']}
 **Labeled contacts:** {len(records)}
-**Label source:** `data/processed/calibration_labels.json`
+**Label source:** `{labels_path}`
 
 ---
 
@@ -297,7 +297,7 @@ def main() -> int:
     _plot_probability_distribution(records, output_dir / "probability_distribution.png")
 
     # Write report
-    report_md = _build_report(data, output_dir, args.bins)
+    report_md = _build_report(data, output_dir, args.bins, labels_path)
     (output_dir / "calibration_report.md").write_text(report_md, encoding="utf-8")
     print(f"Calibration report saved to {output_dir / 'calibration_report.md'}")
     return 0

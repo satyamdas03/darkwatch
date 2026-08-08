@@ -14,9 +14,9 @@
 | **Tagline** | A radar contact with no transponder is either noise, a rig, a mismatch — or a ship that chose to disappear. Darkwatch decides which, and says how sure it is. |
 | **Goal** | Build a maritime surveillance system that detects vessels that have deliberately switched off AIS, by fusing free Sentinel-1 SAR imagery with AIS broadcasts, and produces calibrated, auditable dark-vessel verdicts. |
 | **Mode** | Impact-first, funding-agnostic, single-consumer-GPU research/engineering build. |
-| **Status** | Phase 2 — Vessel Detection baseline COMPLETE; Session #7 COMPLETE: SSDD→GRD domain gap closed. Mixed YOLOv8n detector `darkwatch_yolov8n_ssdd_grd_v4` trained from corrected weak-positive chips and validated; July 23 weak-target recall regression fixed (both known DARK vessels recovered). Phase 3 Fusion & Attribution baseline COMPLETE: static-object exclusion + three real scenes fused (CLEAR 3, REVIEW 5, DARK 3, ARTIFACT 1), calibration framework + interactive maps, 15 labeled calibration contacts |
+| **Status** | Phase 2 — Vessel Detection baseline COMPLETE; Session #7 COMPLETE: SSDD→GRD domain gap closed. Mixed YOLOv8n detector `darkwatch_yolov8n_ssdd_grd_v4` trained from corrected weak-positive chips and validated; July 23 weak-target recall regression fixed (both known DARK vessels recovered). Phase 3 Fusion & Attribution baseline COMPLETE: static-object exclusion + three real scenes fused, calibration framework + interactive maps. Session #8 COMPLETE: v4 detector + adaptive stretch re-run across July 11/18/23; 26 labeled calibration contacts (11 ARTIFACT, 6 CLEAR, 8 DARK, 1 UNKNOWN); calibration report regenerated; model shows strong CLEAR calibration but overconfident DARK and underconfident ARTIFACT |
 | **Start Date** | 2026-08-04 |
-| **Last Updated** | 2026-08-08 (Session #7 finalized; v4 closes weak-target recall regression; next: recalibrate/re-run fusion with v4, collect more weak-target/artifact scenes) |
+| **Last Updated** | 2026-08-09 (Session #8 finalized; v4 adaptive calibration scaled to 26 labels; next: recalibrate component probabilities, collect more weak-target/artifact scenes, address DARK overconfidence on platform-adjacent and oversized contacts) |
 | **Current Branch** | main |
 | **Git Remote** | `https://github.com/satyamdas03/darkwatch` (public, pushed 2026-08-04) |
 | **Lead Engineer** | Bull (Claude Code agent) |
@@ -286,7 +286,7 @@ darkwatch/
 | 0 | **Recon & first light** | Get real SAR onto the screen; pick test theater | ✅ Complete | Bull | Copernicus + NOAA verified; first scene calibrated and viewed |
 | 1 | **SAR Ingestion & Prep (S1)** | Scenes → analysis-ready tiles, automatically | ✅ Complete | Bull | `prep_s1.py`; land-mask → tile pipeline validated on ocean scene |
 | 2 | **Vessel Detection (S2)** | Scene in, clean contacts out | ✅ Baseline complete; ✅ SSDD→GRD domain-gap closure complete (Session #7) | Bull | `darkwatch_yolov8n_ssdd_grd_v4` recovers July 23 weak targets; default + adaptive stretch paths validated; next: scale calibration with more scenes |
-| 3 | **Fusion & Attribution (S3)** ★ | Calibrated dark-vessel attribution | ✅ Baseline complete | Bull | Three scenes fused; 15 labeled contacts; calibration framework live; more CLEAR/ARTIFACT labels needed for strong empirical calibration |
+| 3 | **Fusion & Attribution (S3)** ★ | Calibrated dark-vessel attribution | ✅ Baseline complete; ✅ v4 adaptive calibration scaled (Session #8) | Bull | Three scenes fused; 26 labeled contacts (v4 adaptive); calibration framework live; model is well-calibrated on CLEAR but overconfident on DARK and underconfident on ARTIFACT; next: recalibrate component probabilities and collect more scenes |
 | 4 | **Behavior & Intent (S4)** | Ranked alerts with context | ⏳ Pending | Bull | Use GFW + public zone data |
 | 5 | **Evidence Layer (S5)** | Auditable dossiers + validation | ⏳ Pending | Bull | Write up method |
 
@@ -607,6 +607,31 @@ darkwatch/
 - **Tests pass:** `python -m pytest -q` → 16 passed.
 - **Next unlock:** scale Phase 3 calibration. Re-run July 11/18/23 fusion with the v4 detector + adaptive stretch, collect additional scenes for CLEAR/ARTIFACT/DARK labels, and empirically validate the calibration curve.
 - **Committed and pushed:** `7fefd65` to `satyamdas03/darkwatch` with message `darkwatch: v4 closes July 23 weak-target recall regression`.
+
+### 2026-08-09 — Session #8: scale Phase 3 calibration with v4 + adaptive stretch
+- **Goal:** re-run July 11/18/23 with the v4 detector and adaptive dB stretch, fuse contacts, label them, and regenerate the calibration report to empirically validate the probabilistic attribution layer.
+- **Completed:**
+  - Ran v4 inference on all three scenes with adaptive stretch (5/95 percentile, 0.05 confidence):
+    - **July 11:** 2 contacts (1 outside theater, 1 on Platform Irene).
+    - **July 18:** 15 contacts (large azimuth-ambiguity/wind artifacts, platform duplicates, and AIS matches).
+    - **July 23:** 9 contacts in a tight cluster around the two known DARK vessels.
+  - Re-ran fusion for all three scenes; wrote reports to `notebooks/fusion_20240711_v4_adaptive_report.md`, `notebooks/fusion_20240718_v4_adaptive_report.md`, `notebooks/fusion_20240723_v4_adaptive_report.md`.
+  - Created `scripts/build_v4_calibration_labels.py` with deterministic labeling rules (AIS match → CLEAR, platform within 250 m → ARTIFACT, oversized detection → ARTIFACT, tile-edge → ARTIFACT, otherwise DARK) plus manual overrides for documented ambiguous cases.
+  - Produced `data/processed/calibration_labels_v4_adaptive.json` with **26 labeled contacts**: 11 ARTIFACT, 6 CLEAR, 8 DARK, 1 UNKNOWN.
+  - Fixed `scripts/evaluate_calibration.py` to report the actual label file path instead of hardcoding `calibration_labels.json`.
+  - Generated new calibration report at `notebooks/calibration_v4_adaptive/calibration_report.md` with Brier scores and reliability diagrams.
+- **Key findings from v4 adaptive calibration:**
+  - **CLEAR calibration is strong:** all 6 CLEAR labels fall in the 0.60–0.80 `p_clear` bin, and the model is correct on every one (Brier 0.0238).
+  - **DARK is overconfident:** mean `p_dark` 0.5366 vs. observed DARK fraction 0.3077; 18 contacts in the 0.60–0.80 `p_dark` bin are only 44.4% actually DARK. Most of the false DARK verdicts are oversized azimuth artifacts or platform-adjacent contacts that the static-object penalty is too weak to flip.
+  - **ARTIFACT is underconfident:** mean `p_artifact` 0.1415 vs. observed ARTIFACT fraction 0.4231. The model rarely assigns high artifact probability even when the contact is clearly on a platform or an oversized streak.
+  - The softmax association + fixed static-object falloff is the primary miscalibration source; a learned calibration layer or stronger artifact priors are the next step.
+- **Decisions:**
+  - Keep `data/processed/calibration_labels.json` as the Phase 3 baseline (15 labels, pre-v4).
+  - Make `data/processed/calibration_labels_v4_adaptive.json` the active v4 calibration source; future scenes are added here.
+  - Preserve the deterministic labeling script so new scenes can be labeled reproducibly and audited.
+- **Tests pass:** `python -m pytest tests/ -q` → 16 passed.
+- **Next unlock:** recalibrate the fusion component probabilities. Options: (1) stronger static-object penalty / larger buffer, (2) add a size-based artifact prior, (3) fit an isotonic regression or Platt scaling on the 26-label v4 dataset, (4) collect more CLEAR/ARTIFACT/DARK scenes to make calibration statistically robust.
+- **Committed and pushed:** TBD — pending user review.
 
 ### 2026-08-08 — Session #6: closing the SSDD→GRD detector domain gap
 - **Goal:** train a detector that generalizes from SSDD to real Sentinel-1 GRD by mixing real GRD training chips back into the dataset.
