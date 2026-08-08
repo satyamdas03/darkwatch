@@ -103,6 +103,17 @@ A second scene produced **12 contacts** against **7 AIS tracks**:
 Full report: [`notebooks/fusion_20240718_report.md`](notebooks/fusion_20240718_report.md).  
 Interactive map: [`notebooks/fusion_20240718_map.html`](notebooks/fusion_20240718_map.html).
 
+### 2024-07-23: two small dark contacts in a quiet scene
+
+A third scene produced **2 small contacts** (68 × 37 m and 46 × 15 m). Both have **no AIS track within 2 km** and **no oil platform nearby**, so both are classified **DARK**:
+
+| Verdict | Count | Notes |
+|---|---|---|
+| **DARK** | 2 | Small vessels, no AIS, no platform; nearest MMSI **BERNARDINE C** 24 km away |
+
+Full report: [`notebooks/fusion_20240723_report.md`](notebooks/fusion_20240723_report.md).  
+Interactive map: [`notebooks/fusion_20240723_map.html`](notebooks/fusion_20240723_map.html).
+
 ---
 
 ## 🚀 Quick Start
@@ -245,15 +256,17 @@ darkwatch/
 |---|---|---|
 | 0 | Recon & first real SAR on screen | ✅ |
 | 1 | Automated SAR ingestion & prep | ✅ |
-| 2 | Vessel detection baseline | ✅ (domain-gap follow-up tracked) |
-| 3 | **Fusion & Attribution** | ✅ Baseline complete: static-object exclusion, two real scenes, calibration framework, interactive maps |
+| 2 | Vessel detection baseline | ✅ Baseline trained; 🔄 SSDD→GRD domain-gap closure in progress |
+| 3 | **Fusion & Attribution** | ✅ Baseline complete: static-object exclusion, three real scenes, calibration framework, interactive maps |
 | 4 | Behavior & intent (zones, persistence, rendezvous) | ⏳ |
 | 5 | Alert & evidence dossiers | ⏳ |
 
 **Next priorities:**
-1. **Collect more labeled scenes** to make calibration statistically meaningful.
-2. **Empirical calibration:** ensure `p_dark = 0.73` actually means ~73% of similar cases are dark.
-3. **Close SSDD→GRD domain gap** with real GRD chips or open SAR datasets (LS-SSDD-v1.0 / HRSID).
+1. **Close the SSDD→GRD detector domain gap** (active in Session #6):
+   - Mixed SSDD + real GRD detector `darkwatch_yolov8n_ssdd_grd_v3` training complete; expanded dataset has **2,901 train / 512 val** images with **1,017 positives**.
+   - July 23 weak-target recall still regressed: 0 contacts at `conf=0.25` and even `conf=0.05`. Need more small-target positives and/or adaptive inference.
+2. **Collect more labeled scenes** to make calibration statistically meaningful.
+3. **Empirical calibration:** ensure `p_dark = 0.73` actually means ~73% of similar cases are dark.
 4. **Phase 4 behavior context:** MPA / EEZ / fishing-zone overlays and persistence tracking.
 
 ---
