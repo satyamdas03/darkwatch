@@ -596,6 +596,7 @@ darkwatch/
     - **July 11:** 1 unique contact, conf 0.658 — same physical vessel as v3/SSDD-only.
     - **July 18:** 11 unique contacts. Maintained all real vessels; dropped the 1700 m × 606 m platform-edge artifact that SSDD-only had included at conf 0.36.
     - **July 23:** default stretch (-25/-5, conf=0.25) found 3 contacts; **adaptive stretch (-40/-10, 5/95 percentile, conf=0.05)** found 9 contacts and recovered **both known DARK vessels** (det0000 conf 0.764, det0001 conf 0.370). v3 adaptive had found only one at conf 0.052.
+  - Re-ran July 23 adaptive validation independently to confirm: v4 produced **9 contacts** vs v3's **1 contact**; the v3-only detection was the weak DARK vessel at conf **0.052**, while v4 returned both DARK vessels at **0.764** and **0.370** plus seven additional low-confidence candidates on the same tile.
   - Wrote memory file `C:\\Users\\point\\.claude\\projects\\C--Users-point-projects-darkwatch\\memory\\weak-positive-augmentation-bug.md` and updated `MEMORY.md`.
 - **Key findings:**
   - The mixed detector's July 23 regression was caused by **label corruption on the only two real weak-positive examples**, not by a fundamental model-capacity problem.
