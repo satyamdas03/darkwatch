@@ -211,3 +211,13 @@ def test_static_object_shifts_verdict_to_artifact():
     assert verdict.static_object_hit is not None
     assert verdict.static_object_hit.hit
     assert any("Irene" in r for r in verdict.reasoning)
+
+
+def test_oversized_contact_with_no_ais_is_artifact():
+    """An oversized contact with no AIS match should be classified as ARTIFACT."""
+    contact = _contact_at(-120.60, 34.55, confidence=0.85)
+    contact.width_m = 1_200.0
+    contact.length_m = 300.0
+    verdict = associate_contact(contact, [], check_static_objects=True)
+    assert verdict.verdict == Verdict.ARTIFACT
+    assert verdict.p_artifact > 0.5

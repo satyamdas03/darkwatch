@@ -59,6 +59,11 @@ def main() -> int:
     parser.add_argument("--gate-m", type=float, default=2_000.0, help="Association gate radius in metres")
     parser.add_argument("--time-window-minutes", type=int, default=60, help="AIS interpolation window around SAR time")
     parser.add_argument("--bbox", type=str, default=None, help="Optional AIS bbox filter")
+    parser.add_argument("--static-confidence-scale", type=float, default=1.5, help="Multiplier for raw static-object confidence")
+    parser.add_argument("--static-confidence-floor", type=float, default=0.3, help="Minimum static-object confidence for any hit")
+    parser.add_argument("--size-max-dim-soft-m", type=float, default=500.0, help="Soft size threshold for artifact evidence")
+    parser.add_argument("--size-max-dim-hard-m", type=float, default=1_000.0, help="Hard size threshold for artifact evidence")
+    parser.add_argument("--dark-artifact-coupling", type=float, default=0.6, help="How strongly artifact evidence competes with dark-vessel residual")
     args = parser.parse_args()
 
     contacts_path = Path(args.contacts)
@@ -88,7 +93,17 @@ def main() -> int:
     print(f"Loaded {len(tracks)} AIS tracks")
 
     print(f"Fusing {len(contacts)} contacts ...")
-    verdicts = associate_all_contacts(contacts, tracks, t_sar=t_sar, gate_radius_m=args.gate_m)
+    verdicts = associate_all_contacts(
+        contacts,
+        tracks,
+        t_sar=t_sar,
+        gate_radius_m=args.gate_m,
+        static_confidence_scale=args.static_confidence_scale,
+        static_confidence_floor=args.static_confidence_floor,
+        size_max_dim_soft_m=args.size_max_dim_soft_m,
+        size_max_dim_hard_m=args.size_max_dim_hard_m,
+        dark_artifact_coupling=args.dark_artifact_coupling,
+    )
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
