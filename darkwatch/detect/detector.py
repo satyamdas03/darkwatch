@@ -23,13 +23,30 @@ from scipy.interpolate import LinearNDInterpolator
 from .contact import Contact
 
 
-def _db_to_uint8(arr: np.ndarray, db_range: tuple[float, float] = (-25.0, -5.0)) -> np.ndarray:
+def _db_to_uint8(
+    arr: np.ndarray,
+    db_range: tuple[float, float] = (-25.0, -5.0),
+    adaptive_percentiles: tuple[float, float] | None = None,
+) -> np.ndarray:
     """Convert a SAR dB image to an 8-bit RGB array suitable for SSDD-trained YOLO.
 
     The default stretch maps -25 dB -> 0 and -5 dB -> 255. NaN/Inf values are
     clamped to the range limits before stretching.
+
+    If ``adaptive_percentiles`` is provided (e.g. ``(1.0, 99.0)``), the stretch
+    bounds are computed per-image from those percentiles of the finite dB values,
+    but clamped to ``db_range`` to avoid extreme outliers. This helps bring out
+    faint, low-backscatter vessels in heterogeneous tiles.
     """
     lo, hi = db_range
+    finite = arr[np.isfinite(arr)]
+    if adaptive_percentiles is not None and len(finite) > 0:
+        p_lo, p_hi = adaptive_percentiles
+        lo = max(lo, float(np.percentile(finite, p_lo)))
+        hi = min(hi, float(np.percentile(finite, p_hi)))
+        if lo >= hi:
+            hi = lo + 1.0
+
     arr = np.nan_to_num(arr, nan=lo, posinf=hi, neginf=lo)
     stretched = np.clip((arr - lo) / (hi - lo), 0.0, 1.0)
     uint8 = (stretched * 255.0).astype(np.uint8)
@@ -82,6 +99,9 @@ class VesselDetector:
 
         Returns the path to the best trained weights.
         """
+        train_kwargs = dict(kwargs)
+        if self.device is not None:
+            train_kwargs.setdefault("device", self.device)
         self.model.train(
             data=str(data_yaml),
             epochs=epochs,
@@ -90,8 +110,7 @@ class VesselDetector:
             patience=patience,
             name=name,
             project=str(project),
-            device=self.device,
-            **kwargs,
+            **train_kwargs,
         )
         best = Path(project) / name / "weights" / "best.pt"
         return best
@@ -103,6 +122,7 @@ class VesselDetector:
         iou: float = 0.45,
         imgsz: int = 640,
         db_range: tuple[float, float] | None = (-25.0, -5.0),
+        adaptive_percentiles: tuple[float, float] | None = None,
         **kwargs,
     ) -> list[list[dict]]:
         """Run inference on a list of image paths or arrays.
@@ -111,6 +131,11 @@ class VesselDetector:
         uint8 RGB using ``db_range``. Existing uint8 arrays are passed through
         (duplicated to 3 channels if grayscale). Plain image paths are passed to
         YOLO unchanged.
+
+        If ``adaptive_percentiles`` is given (e.g. ``(1.0, 99.0)``), the dB
+        stretch limits are computed per-image from those percentiles, clamped
+        to ``db_range``. This can reveal faint targets in tiles with highly
+        variable backscatter.
 
         Returns a list (per image) of detection dicts with keys:
           - image_id / tile_id
@@ -123,7 +148,7 @@ class VesselDetector:
             if isinstance(src, np.ndarray):
                 arr = src
                 if arr.dtype != np.uint8 and db_range is not None:
-                    arr = _db_to_uint8(arr, db_range)
+                    arr = _db_to_uint8(arr, db_range, adaptive_percentiles=adaptive_percentiles)
                 elif arr.ndim == 2:
                     arr = np.stack([arr, arr, arr], axis=-1)
                 sources.append(arr)
@@ -134,7 +159,7 @@ class VesselDetector:
                 with rasterio.open(path) as ds:
                     arr = ds.read(1)
                 if db_range is not None:
-                    arr = _db_to_uint8(arr, db_range)
+                    arr = _db_to_uint8(arr, db_range, adaptive_percentiles=adaptive_percentiles)
                 elif arr.ndim == 2:
                     arr = np.stack([arr, arr, arr], axis=-1)
                 sources.append(arr)
@@ -253,12 +278,15 @@ def detect_tiles(
     iou: float = 0.45,
     imgsz: int = 640,
     db_range: tuple[float, float] | None = (-25.0, -5.0),
+    adaptive_percentiles: tuple[float, float] | None = None,
     polarizations: Iterable[str] | None = None,
 ) -> list[Contact]:
     """Run detector on all tiles in a Darkwatch manifest and geo-locate contacts.
 
     Args:
         detector: initialized VesselDetector.
+        adaptive_percentiles: if given, per-tile percentile stretch is applied
+            to GeoTIFF dB data (e.g. ``(1.0, 99.0)``).
         tile_manifest_path: path to manifest.json from `prep_scene`.
         output_dir: directory for detection outputs (images, labels, contacts.json).
         conf, iou, imgsz: inference parameters.
@@ -300,6 +328,7 @@ def detect_tiles(
         iou=iou,
         imgsz=imgsz,
         db_range=db_range,
+        adaptive_percentiles=adaptive_percentiles,
     )
 
     contacts: list[Contact] = []

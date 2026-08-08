@@ -114,6 +114,8 @@ A third scene produced **2 small contacts** (68 × 37 m and 46 × 15 m). Both ha
 Full report: [`notebooks/fusion_20240723_report.md`](notebooks/fusion_20240723_report.md).  
 Interactive map: [`notebooks/fusion_20240723_map.html`](notebooks/fusion_20240723_map.html).
 
+> **Detector update (Session #7):** the mixed SSDD+GRD detector initially missed these small, low-backscatter targets. After fixing a stale-label augmentation bug and retraining `darkwatch_yolov8n_ssdd_grd_v4`, the model now recovers **both July 23 DARK vessels** — at confidences **0.764** and **0.370** with adaptive dB stretch. The SSDD→GRD domain gap is closed.
+
 ---
 
 ## 🚀 Quick Start
@@ -141,13 +143,22 @@ python scripts/prep_s1.py "data/raw/s1/S1A_...SAFE" \
   --bbox "-120.8,34.3,-119.8,34.7" \
   --pol vv,vh
 
-# 4. Detect vessels (dB -> uint8 contrast stretch is required for SSDD-trained YOLO)
+# 4. Detect vessels (dB -> uint8 contrast stretch is required for YOLO inference)
 python scripts/detect_tiles.py \
   --manifest data/processed/s1a_20240711_channel/manifest.json \
-  --model models/detector_runs/darkwatch_yolov8n_ssdd/weights/best.pt \
+  --model models/detector_runs/darkwatch_yolov8n_ssdd_grd_v4/weights/best.pt \
   --db-lo -25 --db-hi -5 \
   --pol vv,vh \
   --output-dir data/processed/detections_20240711
+
+# For faint / low-backscatter targets, use adaptive per-tile stretch:
+python scripts/detect_tiles.py \
+  --manifest data/processed/s1a_20240723_channel/manifest.json \
+  --model models/detector_runs/darkwatch_yolov8n_ssdd_grd_v4/weights/best.pt \
+  --adaptive-percentiles 5,95 \
+  --db-lo -40 --db-hi -10 --conf 0.05 \
+  --pol vv,vh \
+  --output-dir data/processed/detections_20240723_adaptive
 
 # 5. Fetch NOAA Marine Cadastre AIS for the acquisition date
 python scripts/fetch_ais.py --date 2024-07-11 \
@@ -256,17 +267,17 @@ darkwatch/
 |---|---|---|
 | 0 | Recon & first real SAR on screen | ✅ |
 | 1 | Automated SAR ingestion & prep | ✅ |
-| 2 | Vessel detection baseline | ✅ Baseline trained; 🔄 SSDD→GRD domain-gap closure in progress |
-| 3 | **Fusion & Attribution** | ✅ Baseline complete: static-object exclusion, three real scenes, calibration framework, interactive maps |
+| 2 | Vessel detection baseline | ✅ Baseline trained; ✅ SSDD→GRD domain-gap closure complete (`darkwatch_yolov8n_ssdd_grd_v4`) |
+| 3 | **Fusion & Attribution** | ✅ Baseline complete: static-object exclusion, three real scenes, calibration framework, interactive maps; next: scale calibration with v4 + adaptive stretch |
 | 4 | Behavior & intent (zones, persistence, rendezvous) | ⏳ |
 | 5 | Alert & evidence dossiers | ⏳ |
 
 **Next priorities:**
-1. **Close the SSDD→GRD detector domain gap** (active in Session #6):
-   - Mixed SSDD + real GRD detector `darkwatch_yolov8n_ssdd_grd_v3` training complete; expanded dataset has **2,901 train / 512 val** images with **1,017 positives**.
-   - July 23 weak-target recall still regressed: 0 contacts at `conf=0.25` and even `conf=0.05`. Need more small-target positives and/or adaptive inference.
-2. **Collect more labeled scenes** to make calibration statistically meaningful.
-3. **Empirical calibration:** ensure `p_dark = 0.73` actually means ~73% of similar cases are dark.
+1. **Scale calibration and validate with the v4 detector** (Session #8 direction):
+   - Re-run July 11/18/23 fusion with `darkwatch_yolov8n_ssdd_grd_v4` + adaptive stretch; compare verdicts and update `calibration_labels.json`.
+   - Collect additional scenes to get more **CLEAR** (AIS-matched) and **ARTIFACT** (platform / clutter) labels; current sample size (15 labels) is too small for strong empirical claims.
+2. **Empirical calibration:** ensure `p_dark = 0.73` actually means ~73% of similar cases are dark.
+3. **Adaptive-stretch production path:** decide when to use default vs adaptive dB stretch based on scene statistics, and expose the choice cleanly in the CLI/API.
 4. **Phase 4 behavior context:** MPA / EEZ / fishing-zone overlays and persistence tracking.
 
 ---

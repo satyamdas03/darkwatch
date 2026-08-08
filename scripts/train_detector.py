@@ -28,6 +28,7 @@ def main() -> int:
     parser.add_argument("--project", type=str, default=str(REPO_ROOT / "models" / "detector_runs"))
     parser.add_argument("--name", type=str, default="darkwatch_yolov8n_ssdd")
     parser.add_argument("--device", type=str, default=None, help="torch device (e.g. cuda:0)")
+    parser.add_argument("--workers", type=int, default=None, help="dataloader workers (0 avoids multiprocessing spawn issues)")
     args = parser.parse_args()
 
     data_yaml = Path(args.data)
@@ -37,6 +38,12 @@ def main() -> int:
         return 1
 
     detector = VesselDetector(model_path=args.model, device=args.device)
+    train_kwargs: dict = {}
+    if args.workers is not None:
+        train_kwargs["workers"] = args.workers
+    if args.device is not None:
+        train_kwargs["device"] = args.device
+
     best_weights = detector.train(
         data_yaml=data_yaml,
         epochs=args.epochs,
@@ -45,6 +52,7 @@ def main() -> int:
         patience=args.patience,
         name=args.name,
         project=args.project,
+        **train_kwargs,
     )
 
     print(f"Training complete. Best weights: {best_weights}")

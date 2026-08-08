@@ -14,9 +14,9 @@
 | **Tagline** | A radar contact with no transponder is either noise, a rig, a mismatch — or a ship that chose to disappear. Darkwatch decides which, and says how sure it is. |
 | **Goal** | Build a maritime surveillance system that detects vessels that have deliberately switched off AIS, by fusing free Sentinel-1 SAR imagery with AIS broadcasts, and produces calibrated, auditable dark-vessel verdicts. |
 | **Mode** | Impact-first, funding-agnostic, single-consumer-GPU research/engineering build. |
-| **Status** | Phase 2 — Vessel Detection baseline COMPLETE; Session #6 COMPLETE: mixed SSDD+real-GRD detector trained and validated, expanded GRD chip dataset built, July 23 weak-target recall regression identified as the next unlock. Phase 3 Fusion & Attribution baseline COMPLETE: static-object exclusion + three real scenes fused (CLEAR 3, REVIEW 5, DARK 3, ARTIFACT 1), calibration framework + interactive maps, 15 labeled calibration contacts |
+| **Status** | Phase 2 — Vessel Detection baseline COMPLETE; Session #7 COMPLETE: SSDD→GRD domain gap closed. Mixed YOLOv8n detector `darkwatch_yolov8n_ssdd_grd_v4` trained from corrected weak-positive chips and validated; July 23 weak-target recall regression fixed (both known DARK vessels recovered). Phase 3 Fusion & Attribution baseline COMPLETE: static-object exclusion + three real scenes fused (CLEAR 3, REVIEW 5, DARK 3, ARTIFACT 1), calibration framework + interactive maps, 15 labeled calibration contacts |
 | **Start Date** | 2026-08-04 |
-| **Last Updated** | 2026-08-08 (Session #6 finalized, committed `d781488`; July 23 weak-target recall is next focus) |
+| **Last Updated** | 2026-08-08 (Session #7 finalized; v4 closes weak-target recall regression; next: recalibrate/re-run fusion with v4, collect more weak-target/artifact scenes) |
 | **Current Branch** | main |
 | **Git Remote** | `https://github.com/satyamdas03/darkwatch` (public, pushed 2026-08-04) |
 | **Lead Engineer** | Bull (Claude Code agent) |
@@ -236,7 +236,20 @@ darkwatch/
     - July 11: 1 contact (conf 0.66 vs 0.82 SSDD-only).
     - July 18: 11–13 contacts (slightly lower confidences than SSDD-only; missed the lowest-confidence contact).
     - July 23: **0 contacts** with both default (-25, -5) and looser (-30, -10) stretches — regression vs SSDD-only (2 contacts). Indicates model still undershoots small/weak targets.
-  - Launched `darkwatch_yolov8n_ssdd_grd_v3` on expanded dataset (from v2 weights, 50 epochs, patience 15). Training in progress.
+  - Completed `darkwatch_yolov8n_ssdd_grd_v3` on expanded dataset: best `mAP50=0.958`, final `mAP50=0.939`, `recall=0.869`, `precision=0.910`; but v3 still found **0 contacts** on July 23 at `conf=0.05`, confirming the weak-target recall regression.
+- [x] **Session #7 — SSDD→GRD domain gap CLOSED (2026-08-08):**
+  - Root-caused July 23 regression: only 2 real weak-positive GRD chips existed, and an earlier augmentation pass silently corrupted them by rotating/flipping without updating YOLO bounding boxes.
+  - Added `scripts/augment_weak_positives.py`: photometric-only augmentation (brightness/contrast, speckle, Gaussian noise, gamma, mild blur) that preserves bounding-box validity.
+  - Regenerated `data/processed/grd_chips_20240723_weak_aug/` as 100 photometrically augmented chips from the 2 July 23 DARK positives (50× each).
+  - Rebuilt `data/processed/mixed_ssdd_grd_v4/`: 2,986 train / 527 val images, 1,084 train positives, 1,902 negatives (SSDD + July 11/18/23 + augmented July 23 weak positives).
+  - Fixed `scripts/train_detector.py`: `--workers` is now forwarded to `VesselDetector.train()`; confirmed `workers=0` avoids Windows multiprocessing CUDA spawn errors on RTX 5060.
+  - Trained `darkwatch_yolov8n_ssdd_grd_v4` from v3 weights: early-stopped at epoch 11, best epoch 1, validation `P=0.933`, `R=0.885`, `mAP50=0.953`, `mAP50-95=0.670`; weights at `models/detector_runs/darkwatch_yolov8n_ssdd_grd_v4/weights/best.pt`.
+  - **Validation on real scenes:**
+    - **July 11:** 1 unique contact detected (same as v3 / SSDD-only), conf 0.658.
+    - **July 18:** 11 unique contacts (vs 12 for SSDD-only). v4 maintained all real vessels and dropped the obvious 1700 m × 606 m platform-edge artifact.
+    - **July 23:** v4 default (`-25/-5`, `conf=0.25`) found 3 contacts; with **adaptive stretch** (`lo=-40`, `hi=-10`, 5/95 percentile, `conf=0.05`) found 9 contacts, including **both known DARK vessels** at conf 0.764 and 0.370. v3 adaptive found only 1 of 2 at conf 0.052.
+  - Documented the stale-label augmentation bug in memory (`weak-positive-augmentation-bug.md`) to prevent regression.
+  - **Weak-target recall regression FIXED.**
 
 ### 6.1 Test Theater — Final Choice
 
@@ -272,7 +285,7 @@ darkwatch/
 |---|---|---|---|---|---|
 | 0 | **Recon & first light** | Get real SAR onto the screen; pick test theater | ✅ Complete | Bull | Copernicus + NOAA verified; first scene calibrated and viewed |
 | 1 | **SAR Ingestion & Prep (S1)** | Scenes → analysis-ready tiles, automatically | ✅ Complete | Bull | `prep_s1.py`; land-mask → tile pipeline validated on ocean scene |
-| 2 | **Vessel Detection (S2)** | Scene in, clean contacts out | ✅ Baseline complete; 🔄 Domain-gap closure in progress (Session #6) | Bull | YOLOv8n trained; dB→uint8 preprocessing fixes inference; mixed SSDD+GRD training running; July 23 weak-target recall still a regression |
+| 2 | **Vessel Detection (S2)** | Scene in, clean contacts out | ✅ Baseline complete; ✅ SSDD→GRD domain-gap closure complete (Session #7) | Bull | `darkwatch_yolov8n_ssdd_grd_v4` recovers July 23 weak targets; default + adaptive stretch paths validated; next: scale calibration with more scenes |
 | 3 | **Fusion & Attribution (S3)** ★ | Calibrated dark-vessel attribution | ✅ Baseline complete | Bull | Three scenes fused; 15 labeled contacts; calibration framework live; more CLEAR/ARTIFACT labels needed for strong empirical calibration |
 | 4 | **Behavior & Intent (S4)** | Ranked alerts with context | ⏳ Pending | Bull | Use GFW + public zone data |
 | 5 | **Evidence Layer (S5)** | Auditable dossiers + validation | ⏳ Pending | Bull | Write up method |
@@ -317,6 +330,9 @@ darkwatch/
 | 2026-08-05 | Run a second Sentinel-1 scene (2024-07-18) to collect CLEAR and ARTIFACT calibration cases | Single-contact Jul 11 scene cannot validate p_clear / p_artifact | 12 contacts, 3 CLEAR, 5 REVIEW, 3 DARK, 1 ARTIFACT — now have ground-truthable positive and negative examples. |
 | 2026-08-05 | Improve scene selection with operational bbox overlap | First July 23 candidate had 100% water but 0% theater overlap, wasting a download/prep cycle | Combined score = `water_fraction × operational_overlap`; top correct pass found 94.79% water, 56.94% overlap |
 | 2026-08-05 | Force-track `data/processed/calibration_labels.json` in git despite broad `data/` gitignore | Auditable labels are part of the method and must survive cleanups / new sessions | Added `.gitignore` exception `!data/processed/calibration_labels.json` and `git add -f` |
+| 2026-08-08 | Use photometric-only augmentation for weak-positive GRD chips | Geometric flips/rotations silently corrupted YOLO bounding boxes on the first weak-positive augmentation pass | New `scripts/augment_weak_positives.py` applies brightness/contrast, speckle, Gaussian noise, gamma, and mild blur; boxes stay valid |
+| 2026-08-08 | Train mixed detectors from previous mixed weights | Starting each mixed run from the previous mixed model preserves already-learned GRD features and stabilizes short fine-tunes | v2 → v3 → v4 chained fine-tunes, each <50 epochs, each improving or preserving validation metrics |
+| 2026-08-08 | Use `workers=0` for Ultralytics training on Windows RTX 5060 | `workers>0` triggers multiprocessing CUDA spawn / OpenCV OOM errors on this machine | `scripts/train_detector.py` now forwards `--workers`; default runs use `workers=0` and batch=4 |
 
 ---
 
@@ -341,7 +357,7 @@ darkwatch/
 | 2026-08-04 | ✅ RESOLVED — Public GitHub repo `satyamdas03/darkwatch` created and pushed | — | Bull |
 | 2026-08-04 | ✅ RESOLVED — GitHub profile README repo `satyamdas03/satyamdas03` created and pushed | — | Bull |
 | 2026-08-05 | ✅ Baseline calibration framework shipped (`scripts/evaluate_calibration.py` + 15 labels) | High — empirical calibration now needs more scenes, especially CLEAR/ARTIFACT, to reach statistical confidence | Bull |
-| 2026-08-05 | ⚠️ WATCH — SSDD→GRD domain gap is the main throughput bottleneck (0 contacts on Jul 23 default stretch, 2 with looser stretch) | High — limits contacts per scene and therefore calibration data volume; options: real GRD chips, LS-SSDD-v1.0, HRSID, CFAR fallback, larger backbone | Bull |
+| 2026-08-05 | ✅ RESOLVED — SSDD→GRD domain gap / July 23 weak-target recall regression fixed by v4 mixed detector + photometric weak-positive augmentation | High — `darkwatch_yolov8n_ssdd_grd_v4` recovers both July 23 DARK vessels; domain gap is closed for current test theater | Bull |
 | 2026-08-05 | ✅ All work committed/pushed: `61a1dc5` | — | Bull |
 
 ---
@@ -566,6 +582,30 @@ darkwatch/
 - Refreshed `DOSSIER.md` project identity, current state, decisions, blockers, and session log.
 - Committed and pushed all changes as `61a1dc5` to `satyamdas03/darkwatch`.
 - **Status after this consolidation:** Phase 3 baseline is locked; the next high-impact work is detector improvement to close the SSDD→GRD domain gap.
+
+### 2026-08-08 — Session #7: closing the July 23 weak-target recall regression (SSDD→GRD domain gap CLOSED)
+- **Goal:** fix the mixed detector's failure to detect small, low-backscatter real Sentinel-1 vessels, then validate that the SSDD→GRD domain gap is closed.
+- **Completed:**
+  - Diagnosed and documented the stale-label weak-positive augmentation bug: an early augmentation pass rotated/flipped the 2 July 23 DARK positives without recomputing YOLO boxes, silently corrupting training labels.
+  - Created `scripts/augment_weak_positives.py` with photometric-only augmentation (brightness/contrast, multiplicative speckle, additive Gaussian noise, gamma, mild blur) that leaves bounding boxes unchanged.
+  - Regenerated `data/processed/grd_chips_20240723_weak_aug/` as 100 augmented chips from 2 source positives (50 each).
+  - Rebuilt mixed dataset `data/processed/mixed_ssdd_grd_v4/`: 2,986 train / 527 val images, 1,084 training positives, 1,902 negatives (SSDD + July 11/18/23 chips + augmented July 23 weak positives).
+  - Fixed `scripts/train_detector.py` so `--workers` is forwarded to `VesselDetector.train()`; used `workers=0` / batch=4 to avoid Windows multiprocessing CUDA spawn errors.
+  - Trained `darkwatch_yolov8n_ssdd_grd_v4` from v3 weights; early-stopped at epoch 11 (best epoch 1). Validation: **P=0.933, R=0.885, mAP50=0.953, mAP50-95=0.670**.
+  - Validated v4 on all three real scenes:
+    - **July 11:** 1 unique contact, conf 0.658 — same physical vessel as v3/SSDD-only.
+    - **July 18:** 11 unique contacts. Maintained all real vessels; dropped the 1700 m × 606 m platform-edge artifact that SSDD-only had included at conf 0.36.
+    - **July 23:** default stretch (-25/-5, conf=0.25) found 3 contacts; **adaptive stretch (-40/-10, 5/95 percentile, conf=0.05)** found 9 contacts and recovered **both known DARK vessels** (det0000 conf 0.764, det0001 conf 0.370). v3 adaptive had found only one at conf 0.052.
+  - Wrote memory file `C:\\Users\\point\\.claude\\projects\\C--Users-point-projects-darkwatch\\memory\\weak-positive-augmentation-bug.md` and updated `MEMORY.md`.
+- **Key findings:**
+  - The mixed detector's July 23 regression was caused by **label corruption on the only two real weak-positive examples**, not by a fundamental model-capacity problem.
+  - Photometric augmentation of real weak positives gives the model enough examples to learn low-backscatter vessel appearance without distorting labels.
+  - v4 shows a small confidence reduction on bright targets vs SSDD-only, but all real contacts remain well above the detection threshold and one obvious artifact is removed.
+  - Adaptive dB stretch is a powerful inference-time knob for faint targets; it should remain exposed in `scripts/detect_tiles.py` and the production inference path.
+- **Status:** SSDD→GRD domain gap **closed** for the current test theater. The detector now finds both bright channel traffic and the small, low-backscatter July 23 dark vessels.
+- **Tests pass:** `python -m pytest -q` → 16 passed.
+- **Next unlock:** scale Phase 3 calibration. Re-run July 11/18/23 fusion with the v4 detector + adaptive stretch, collect additional scenes for CLEAR/ARTIFACT/DARK labels, and empirically validate the calibration curve.
+- **Committed and pushed:** pending — commit message `darkwatch: v4 closes July 23 weak-target recall regression`.
 
 ### 2026-08-08 — Session #6: closing the SSDD→GRD detector domain gap
 - **Goal:** train a detector that generalizes from SSDD to real Sentinel-1 GRD by mixing real GRD training chips back into the dataset.

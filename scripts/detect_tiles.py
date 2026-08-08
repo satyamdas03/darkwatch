@@ -32,6 +32,7 @@ def main() -> int:
     parser.add_argument("--db-lo", type=float, default=-25.0, help="Lower dB bound for contrast stretch")
     parser.add_argument("--db-hi", type=float, default=-5.0, help="Upper dB bound for contrast stretch")
     parser.add_argument("--no-stretch", action="store_true", help="Skip dB-to-uint8 contrast stretch")
+    parser.add_argument("--adaptive-percentiles", type=str, default=None, help="Per-tile percentile stretch, e.g. '1,99'")
     parser.add_argument("--pol", type=str, default=None, help="Comma-separated polarizations to process (e.g. vv,vh); default = all in manifest")
     args = parser.parse_args()
 
@@ -43,6 +44,10 @@ def main() -> int:
     detector = VesselDetector(model_path=args.model, device=args.device)
     db_range = None if args.no_stretch else (args.db_lo, args.db_hi)
     polarizations = tuple(p.strip().lower() for p in args.pol.split(",")) if args.pol else None
+    adaptive_percentiles = None
+    if args.adaptive_percentiles:
+        p_lo, p_hi = (float(v) for v in args.adaptive_percentiles.split(","))
+        adaptive_percentiles = (p_lo, p_hi)
     detect_tiles(
         detector=detector,
         tile_manifest_path=manifest_path,
@@ -51,6 +56,7 @@ def main() -> int:
         iou=args.iou,
         imgsz=args.imgsz,
         db_range=db_range,
+        adaptive_percentiles=adaptive_percentiles,
         polarizations=polarizations,
     )
     return 0
