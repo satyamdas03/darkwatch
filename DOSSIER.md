@@ -14,9 +14,9 @@
 | **Tagline** | A radar contact with no transponder is either noise, a rig, a mismatch — or a ship that chose to disappear. Darkwatch decides which, and says how sure it is. |
 | **Goal** | Build a maritime surveillance system that detects vessels that have deliberately switched off AIS, by fusing free Sentinel-1 SAR imagery with AIS broadcasts, and produces calibrated, auditable dark-vessel verdicts. |
 | **Mode** | Impact-first, funding-agnostic, single-consumer-GPU research/engineering build. |
-| **Status** | Phase 2 — Vessel Detection baseline COMPLETE; Session #6 in progress: closing SSDD→GRD domain gap via mixed SSDD+real-GRD detector training and expanded real-GRD chip dataset. Phase 3 Fusion & Attribution baseline COMPLETE: static-object exclusion + three real scenes fused (CLEAR 3, REVIEW 5, DARK 3, ARTIFACT 1), calibration framework + interactive maps, 15 labeled calibration contacts |
+| **Status** | Phase 2 — Vessel Detection baseline COMPLETE; Session #6 COMPLETE: mixed SSDD+real-GRD detector trained and validated, expanded GRD chip dataset built, July 23 weak-target recall regression identified as the next unlock. Phase 3 Fusion & Attribution baseline COMPLETE: static-object exclusion + three real scenes fused (CLEAR 3, REVIEW 5, DARK 3, ARTIFACT 1), calibration framework + interactive maps, 15 labeled calibration contacts |
 | **Start Date** | 2026-08-04 |
-| **Last Updated** | 2026-08-08 (Session #6: mixed detector training + expanded GRD chips; work in progress) |
+| **Last Updated** | 2026-08-08 (Session #6 finalized, committed `d781488`; July 23 weak-target recall is next focus) |
 | **Current Branch** | main |
 | **Git Remote** | `https://github.com/satyamdas03/darkwatch` (public, pushed 2026-08-04) |
 | **Lead Engineer** | Bull (Claude Code agent) |
@@ -570,18 +570,27 @@ darkwatch/
 ### 2026-08-08 — Session #6: closing the SSDD→GRD detector domain gap
 - **Goal:** train a detector that generalizes from SSDD to real Sentinel-1 GRD by mixing real GRD training chips back into the dataset.
 - **Completed:**
-  - Relaunched failed mixed training as `darkwatch_yolov8n_ssdd_grd_v2`; finished 18 epochs with `mAP50=0.938`, `recall=0.879`, `precision=0.903`; weights now in repo.
+  - Relaunched failed mixed training as `darkwatch_yolov8n_ssdd_grd_v2`; finished 18 epochs with `mAP50=0.938`, `recall=0.879`, `precision=0.903`; weights now in repo under `models/detector_runs/darkwatch_yolov8n_ssdd_grd_v2/weights/best.pt`.
   - Fixed `scripts/extract_grd_chips.py` usage: re-extracted July 23 positives from loose detections, yielding 2 DARK-labeled vessel chips + 201 negatives.
   - Added `scripts/build_mixed_dataset.py` for reproducible SSDD+GRD merging with stratified train/val splits.
   - Built `data/processed/mixed_ssdd_grd_v3/`: 2,901 train / 512 val images, 1,017 training positives (SSDD + July 11/18/23).
-  - Validated v2 detector on all three scenes; logged regression on July 23 (0 contacts).
-  - Launched `darkwatch_yolov8n_ssdd_grd_v3` training on the expanded dataset.
-  - Tests pass: `python -m pytest -q` → 16 passed.
-- **In progress:** waiting for `darkwatch_yolov8n_ssdd_grd_v3` training to complete; then validate on the three scenes and update README.
+  - Completed `darkwatch_yolov8n_ssdd_grd_v3` training from v2 weights on the expanded dataset; finished 2 epochs with best `mAP50=0.958`, final `mAP50=0.939`, `recall=0.869`, `precision=0.910`; weights at `models/detector_runs/darkwatch_yolov8n_ssdd_grd_v3/weights/best.pt`.
+  - Validated v2 and v3 mixed detectors on all three scenes against the SSDD-only baseline.
+- **Scene-by-scene detector comparison:**
+  - **July 11:** 1 contact for all models. Confidences: SSDD-only 0.822; v3 mixed 0.783; v2 mixed 0.658–0.667.
+  - **July 18:** 10–13 contacts. SSDD-only found 12 (conf 0.326–0.828); v3 mixed found 10–12 (conf 0.268–0.815); v2 mixed found 11–13 (conf 0.263–0.797). v3 roughly matches SSDD-only; v2 introduced extra weak candidates.
+  - **July 23:** SSDD-only found 0 contacts at default `conf=0.25`, but 4 contacts at `conf=0.05` with stretch (-30, -10). Both v2 and v3 mixed detectors found **0 contacts even at `conf=0.05`**, a clear recall regression on small/weak targets.
+- **Tests pass:** `python -m pytest -q` → 16 passed.
 - **Key findings:**
-  - Mixing real GRD chips helps validation mAP but does not automatically improve recall on small weak targets if the positive count is tiny.
-  - July 23 targets are small (46–68 m) and low-backscatter; they need to be explicitly represented in training.
-  - Default contrast stretch (-25, -5) and looser (-30, -10) both miss them with the current model; the right fix is likely more positives, possibly adaptive stretch, and/or tiling/upsampling at inference.
+  - Mixing real GRD chips raises validation mAP and restores confidence on bright targets (July 11/18), but does **not** automatically fix recall on small weak targets when the positive count is tiny.
+  - July 23 targets are small (46–68 m) and low-backscatter. The 2 positive chips are only 37×56 px and represent a tiny fraction of the mixed dataset.
+  - Default contrast stretch (-25, -5) and looser (-30, -10) both miss July 23 targets with the mixed model; lowering confidence to 0.05 still returns nothing.
+- **Next unlock:** explicit weak-target representation. Options ranked by likely impact:
+  1. Collect / synthesize more real small-vessel GRD positives (additional scenes, data augmentation, or synthetic low-backscatter ships).
+  2. Add an **adaptive dB stretch** path in `darkwatch/detect/detector.py` so inference can per-tile optimize contrast for faint targets.
+  3. Tile the scene at finer effective resolution and run multi-scale detection.
+  4. Retrain with class-aware or scale-aware loss (e.g., smaller anchor boxes, FPN tuning) if YOLOv8n exposes those knobs.
+- **Committed and pushed:** all code, logs, manifests, and sample inference outputs committed as `d781488` to `satyamdas03/darkwatch`.
 
 ---
 
