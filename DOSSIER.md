@@ -631,7 +631,7 @@ darkwatch/
   - Preserve the deterministic labeling script so new scenes can be labeled reproducibly and audited.
 - **Tests pass:** `python -m pytest tests/ -q` → 16 passed.
 - **Next unlock:** recalibrate the fusion component probabilities. Options: (1) stronger static-object penalty / larger buffer, (2) add a size-based artifact prior, (3) fit an isotonic regression or Platt scaling on the 26-label v4 dataset, (4) collect more CLEAR/ARTIFACT/DARK scenes to make calibration statistically robust.
-- **Committed and pushed:** TBD — pending user review.
+- **Committed and pushed:** `80ef11f` to `satyamdas03/darkwatch` with message `darkwatch: scale Phase 3 calibration with v4 adaptive detector (26 labels)`.
 
 ### 2026-08-08 — Session #6: closing the SSDD→GRD detector domain gap
 - **Goal:** train a detector that generalizes from SSDD to real Sentinel-1 GRD by mixing real GRD training chips back into the dataset.
