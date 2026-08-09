@@ -16,7 +16,7 @@
 | **Mode** | Impact-first, funding-agnostic, single-consumer-GPU research/engineering build. |
 | **Status** | Phase 2 — Vessel Detection baseline COMPLETE; Session #7 COMPLETE: SSDD→GRD domain gap closed. Mixed YOLOv8n detector `darkwatch_yolov8n_ssdd_grd_v4` trained from corrected weak-positive chips and validated; July 23 weak-target recall regression fixed (both known DARK vessels recovered). Phase 3 Fusion & Attribution baseline COMPLETE: static-object exclusion + three real scenes fused, calibration framework + interactive maps. Session #8 COMPLETE: v4 detector + adaptive stretch re-run across July 11/18/23; 26 labeled calibration contacts (11 ARTIFACT, 6 CLEAR, 8 DARK, 1 UNKNOWN); calibration report regenerated; model shows strong CLEAR calibration but overconfident DARK and underconfident ARTIFACT |
 | **Start Date** | 2026-08-04 |
-| **Last Updated** | 2026-08-09 (Session #9 finalized; fusion priors recalibrated with size/shape artifact evidence; next: fix 2 CLEAR→REVIEW regressions + 1 DARK→ARTIFACT tile-edge false positive, then collect more scenes) |
+| **Last Updated** | 2026-08-09 (Session #10 finalized; match-aware fusion artifact discount + tile-edge size guard fixed the Session #9 regressions; new active calibration source `calibration_labels_v4_adaptive_recal2.json`; next: collect more scenes to make calibration statistically robust) |
 | **Current Branch** | main |
 | **Git Remote** | `https://github.com/satyamdas03/darkwatch` (public, pushed 2026-08-04) |
 | **Lead Engineer** | Bull (Claude Code agent) |
@@ -286,7 +286,7 @@ darkwatch/
 | 0 | **Recon & first light** | Get real SAR onto the screen; pick test theater | ✅ Complete | Bull | Copernicus + NOAA verified; first scene calibrated and viewed |
 | 1 | **SAR Ingestion & Prep (S1)** | Scenes → analysis-ready tiles, automatically | ✅ Complete | Bull | `prep_s1.py`; land-mask → tile pipeline validated on ocean scene |
 | 2 | **Vessel Detection (S2)** | Scene in, clean contacts out | ✅ Baseline complete; ✅ SSDD→GRD domain-gap closure complete (Session #7) | Bull | `darkwatch_yolov8n_ssdd_grd_v4` recovers July 23 weak targets; default + adaptive stretch paths validated; next: scale calibration with more scenes |
-| 3 | **Fusion & Attribution (S3)** ★ | Calibrated dark-vessel attribution | ✅ Baseline complete; ✅ v4 adaptive calibration scaled (Session #8); ✅ fusion priors recalibrated with size/shape artifact evidence (Session #9) | Bull | Three scenes fused; 26 labeled contacts; calibration framework live; ARTIFACT and DARK Brier scores sharply improved; 2 CLEAR→REVIEW regressions and 1 tile-edge false positive remain; next: tune those edge cases and collect more scenes |
+| 3 | **Fusion & Attribution (S3)** ★ | Calibrated dark-vessel attribution | ✅ Baseline complete; ✅ v4 adaptive calibration scaled (Session #8); ✅ fusion priors recalibrated with size/shape artifact evidence (Session #9); ✅ Session #9 regressions fixed with match-aware artifact discount + tile-edge size guard (Session #10) | Bull | Three scenes fused; 26 labeled contacts; calibration framework live; active label source `data/processed/calibration_labels_v4_adaptive_recal2.json`; next: collect more scenes to make calibration statistically robust |
 | 4 | **Behavior & Intent (S4)** | Ranked alerts with context | ⏳ Pending | Bull | Use GFW + public zone data |
 | 5 | **Evidence Layer (S5)** | Auditable dossiers + validation | ⏳ Pending | Bull | Write up method |
 
@@ -656,6 +656,31 @@ darkwatch/
 - **Tests pass:** `python -m pytest tests/ -q` → 17 passed.
 - **Next unlock:** tune the two regressions (CLEAR size prior and tile-edge false positive), then collect more scenes to make calibration statistically robust.
 - **Committed and pushed:** `0253b96` to `satyamdas03/darkwatch` with message `darkwatch: recalibrate fusion priors with size/shape artifact evidence`.
+
+### 2026-08-09 — Session #10: tune fusion regressions with match-aware artifact discount and tile-edge size guard
+- **Goal:** fix the two CLEAR→REVIEW regressions and one DARK→ARTIFACT false positive introduced by Session #9's size/shape artifact prior, while preserving the ARTIFACT/DARK calibration gains.
+- **Completed:**
+  - Added a **match-aware artifact discount** to `darkwatch/fusion/associate.py`: after combining size/shape + static artifact evidence, the combined confidence is rescaled by `(1 - p_matched_given_real) ** artifact_conf_ais_discount_power`. This protects contacts with strong in-gate AIS matches from being pushed below the `p_clear > 0.6` verdict threshold by spurious oversize or static-object signals.
+  - Added a **tile-edge size guard** in `size_artifact_confidence()`: the tile-edge truncation channel now only fires when `max_dim >= size_tile_edge_min_size_m` (default 80 m) or, optionally, when the contact occupies a configured fraction of the tile. This prevents small plausible vessels a few pixels from the border from being misclassified as ARTIFACT.
+  - Exposed new knobs in `scripts/fuse_contacts.py`: `--size-tile-edge-min-size-m`, `--size-tile-edge-min-tile-ratio`, `--artifact-conf-ais-discount-power`.
+  - Added regression tests to `tests/test_fusion.py`: a small near-edge contact stays out of ARTIFACT, and a platform-adjacent contact with a strong AIS match returns to CLEAR. Total tests now **19 passed**.
+  - Re-fused all three scenes into `data/processed/fusion_202407{11,18,23}_v4_adaptive_recal2/verdicts.json` and produced `data/processed/calibration_labels_v4_adaptive_recal2.json` + `notebooks/calibration_v4_adaptive_recal2/calibration_report.md`.
+- **Calibration impact on 26 v4 labels (recal2 vs. recal):**
+  - **All 3 known regressions resolved:**
+    - `vh_c2380_r8843_det0000` (MSC GIUSY): REVIEW → CLEAR (`p_clear=0.702`, `p_artifact=0.118`).
+    - `vh_c6860_r7947_det0000` (JACKIE C, near Platform Harmony): REVIEW → CLEAR (`p_clear=0.662`, `p_artifact=0.180`).
+    - `vv_c21010_r14232_det0000` (small vessel near tile edge): ARTIFACT → DARK (`p_dark=0.674`, `p_artifact=0.101`).
+  - **ARTIFACT Brier:** 0.0960 → 0.0854.
+  - **CLEAR Brier:** 0.0379 → 0.0249.
+  - **DARK Brier:** 0.0988 → 0.1000 (essentially unchanged; within noise).
+  - **Per-label confusion matrix:** 10/11 ARTIFACT correct, 6/6 CLEAR correct, 8/8 DARK correct, 1 UNKNOWN → DARK.
+  - **One new edge case:** `vh_c21010_r14232_det0002` (ARTIFACT label, small 67×40 m tile-edge contact) moved to DARK because the new 80 m minimum size guard no longer flags it as artifact. Logged for the next guard-tuning pass; net regressions fixed (3) exceed new regressions (1).
+- **Decisions:**
+  - Make `data/processed/calibration_labels_v4_adaptive_recal2.json` the active v4 calibration source; future scenes are added here.
+  - Keep Session #8 (`calibration_labels_v4_adaptive.json`) and Session #9 (`calibration_labels_v4_adaptive_recal.json`) labels under version control for traceability.
+- **Tests pass:** `python -m pytest tests/ -q` → **19 passed**.
+- **Next unlock:** collect more CLEAR/ARTIFACT/DARK scenes to move from 26 labels to a statistically robust calibration dataset; revisit the small tile-edge guard if more edge-truncation labels appear.
+- **Committed and pushed:** `{SESSION_10_COMMIT_HASH}` to `satyamdas03/darkwatch` with message `darkwatch: fix Session #9 fusion regressions with match-aware artifact discount and tile-edge size guard`.
 
 ### 2026-08-08 — Session #6: closing the SSDD→GRD detector domain gap
 - **Goal:** train a detector that generalizes from SSDD to real Sentinel-1 GRD by mixing real GRD training chips back into the dataset.

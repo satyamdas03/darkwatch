@@ -40,6 +40,14 @@ DEFAULT_SIZE_MIN_ASPECT_SOFT = 5.0
 DEFAULT_SIZE_MIN_ASPECT_HARD = 10.0
 DEFAULT_SIZE_TILE_EDGE_BUFFER_PX = 4.0
 DEFAULT_SIZE_TILE_EDGE_CONFIDENCE = 0.7
+DEFAULT_SIZE_TILE_EDGE_MIN_SIZE_M = 80.0
+DEFAULT_SIZE_TILE_EDGE_MIN_TILE_RATIO = 0.0
+
+# Match-aware artifact discount. When a contact has a high-likelihood AIS match,
+# size/shape and static-object artifact evidence is down-weighted by
+# (1 - p_matched_given_real) ** power so that strong cooperative matches are not
+# pushed below the CLEAR threshold by spurious artifact signals.
+DEFAULT_ARTIFACT_CONF_AIS_DISCOUNT_POWER = 1.0
 
 # Static-object penalty scaling defaults.
 DEFAULT_STATIC_CONFIDENCE_SCALE = 1.5
@@ -121,6 +129,8 @@ def size_artifact_confidence(
     min_aspect_hard: float = DEFAULT_SIZE_MIN_ASPECT_HARD,
     tile_edge_buffer_px: float = DEFAULT_SIZE_TILE_EDGE_BUFFER_PX,
     tile_edge_confidence: float = DEFAULT_SIZE_TILE_EDGE_CONFIDENCE,
+    tile_edge_min_size_m: float = DEFAULT_SIZE_TILE_EDGE_MIN_SIZE_M,
+    tile_edge_min_tile_ratio: float = DEFAULT_SIZE_TILE_EDGE_MIN_TILE_RATIO,
     tile_shape_px: tuple[int, int] | None = None,
 ) -> float:
     """Return 0..1 probability that a SAR contact is a non-vessel size/shape artifact.
@@ -130,9 +140,12 @@ def size_artifact_confidence(
         certainly azimuth-ambiguity or wind-streak artifacts.
       * Extreme aspect ratio: azimuth smearing produces very elongated boxes.
       * Tile-edge truncation: detections touching a tile border are often partial
-        or duplicated artifacts.
+        or duplicated artifacts. This channel is only applied to contacts that are
+        large in absolute terms or occupy a sizable fraction of the tile, so small
+        plausible vessels a few pixels from the border are not misclassified.
     """
     conf = 0.0
+    max_dim = 0.0
     if (
         contact.width_m
         and contact.length_m
@@ -163,18 +176,27 @@ def size_artifact_confidence(
             )
 
     # Tile-edge truncation: partial/crowded detections at image borders.
-    if contact.pixel_bbox is not None:
-        xmin, ymin, xmax, ymax = contact.pixel_bbox
-        near_zero = xmin < tile_edge_buffer_px or ymin < tile_edge_buffer_px
-        near_far = False
-        if tile_shape_px is not None:
+    # Only flag contacts that are physically large (or large relative to the tile);
+    # small real vessels a couple of pixels from the edge should not be penalized.
+    if contact.pixel_bbox is not None and max_dim > 0:
+        large_enough = max_dim >= tile_edge_min_size_m
+        if not large_enough and tile_edge_min_tile_ratio > 0 and tile_shape_px is not None:
             h, w = tile_shape_px
-            near_far = (
-                xmax > w - tile_edge_buffer_px
-                or ymax > h - tile_edge_buffer_px
-            )
-        if near_zero or near_far:
-            conf = max(conf, tile_edge_confidence)
+            min_tile_dim = min(h, w)
+            if min_tile_dim > 0:
+                large_enough = max_dim / min_tile_dim >= tile_edge_min_tile_ratio
+        if large_enough:
+            xmin, ymin, xmax, ymax = contact.pixel_bbox
+            near_zero = xmin < tile_edge_buffer_px or ymin < tile_edge_buffer_px
+            near_far = False
+            if tile_shape_px is not None:
+                h, w = tile_shape_px
+                near_far = (
+                    xmax > w - tile_edge_buffer_px
+                    or ymax > h - tile_edge_buffer_px
+                )
+            if near_zero or near_far:
+                conf = max(conf, tile_edge_confidence)
 
     return float(min(conf, 1.0))
 
@@ -196,6 +218,9 @@ def associate_contact(
     size_min_aspect_hard: float = DEFAULT_SIZE_MIN_ASPECT_HARD,
     size_tile_edge_buffer_px: float = DEFAULT_SIZE_TILE_EDGE_BUFFER_PX,
     size_tile_edge_confidence: float = DEFAULT_SIZE_TILE_EDGE_CONFIDENCE,
+    size_tile_edge_min_size_m: float = DEFAULT_SIZE_TILE_EDGE_MIN_SIZE_M,
+    size_tile_edge_min_tile_ratio: float = DEFAULT_SIZE_TILE_EDGE_MIN_TILE_RATIO,
+    artifact_conf_ais_discount_power: float = DEFAULT_ARTIFACT_CONF_AIS_DISCOUNT_POWER,
     dark_artifact_coupling: float = DEFAULT_DARK_ARTIFACT_COUPLING,
     image_shape_px: tuple[int, int] | None = None,
 ) -> ContactVerdict:
@@ -221,6 +246,15 @@ def associate_contact(
         size_tile_edge_buffer_px: pixel distance from a tile border treated as
             an edge-truncated detection.
         size_tile_edge_confidence: artifact confidence boost for edge contacts.
+        size_tile_edge_min_size_m: minimum physical size (m) for the tile-edge
+            channel to fire; keeps small plausible vessels near the border from
+            being forced into ARTIFACT.
+        size_tile_edge_min_tile_ratio: optional alternative tile-edge threshold;
+            if greater than 0, the channel also fires when max_dim / min(tile_dim)
+            exceeds this ratio.
+        artifact_conf_ais_discount_power: power applied to (1 - p_matched_given_real)
+            when discounting artifact evidence for contacts with a strong AIS match.
+            0.0 disables the discount.
         dark_artifact_coupling: how strongly artifact evidence also competes
             with the dark-vessel residual.
         image_shape_px: optional (height, width) of the source tile, used for
@@ -291,6 +325,10 @@ def associate_contact(
         p_clear = 0.0
         reasoning.append("No AIS track within gate radius.")
 
+    # Preserve the AIS match probability conditional on the contact being a real
+    # vessel. This is used to discount artifact evidence for strong matches.
+    p_matched_given_real = p_clear
+
     # Detection confidence feeds into real-vessel probability.
     # Low-confidence detections keep some artifact probability; high-confidence
     # detections are treated as real vessels unless AIS geometry contradicts it.
@@ -325,6 +363,8 @@ def associate_contact(
         min_aspect_hard=size_min_aspect_hard,
         tile_edge_buffer_px=size_tile_edge_buffer_px,
         tile_edge_confidence=size_tile_edge_confidence,
+        tile_edge_min_size_m=size_tile_edge_min_size_m,
+        tile_edge_min_tile_ratio=size_tile_edge_min_tile_ratio,
         tile_shape_px=image_shape_px,
     )
     if size_conf > 0.0:
@@ -338,6 +378,17 @@ def associate_contact(
 
     # Combine independent artifact evidence channels.
     artifact_conf = 1.0 - (1.0 - size_conf) * (1.0 - static_conf)
+
+    # Match-aware discount: strong AIS matches suppress spurious size/shape/static
+    # artifact evidence so that cooperative vessels are not pushed below CLEAR.
+    if artifact_conf > 0.0 and artifact_conf_ais_discount_power != 0.0:
+        discount = (1.0 - p_matched_given_real) ** artifact_conf_ais_discount_power
+        artifact_conf *= discount
+        reasoning.append(
+            f"Artifact evidence discounted by AIS match probability: "
+            f"(1 - {p_matched_given_real:.3f})^{artifact_conf_ais_discount_power:.2f} = "
+            f"{discount:.3f}."
+        )
 
     # Apply artifact evidence to real-vessel mass.
     if artifact_conf > 0.0:
@@ -442,6 +493,9 @@ def associate_all_contacts(
     size_min_aspect_hard: float = DEFAULT_SIZE_MIN_ASPECT_HARD,
     size_tile_edge_buffer_px: float = DEFAULT_SIZE_TILE_EDGE_BUFFER_PX,
     size_tile_edge_confidence: float = DEFAULT_SIZE_TILE_EDGE_CONFIDENCE,
+    size_tile_edge_min_size_m: float = DEFAULT_SIZE_TILE_EDGE_MIN_SIZE_M,
+    size_tile_edge_min_tile_ratio: float = DEFAULT_SIZE_TILE_EDGE_MIN_TILE_RATIO,
+    artifact_conf_ais_discount_power: float = DEFAULT_ARTIFACT_CONF_AIS_DISCOUNT_POWER,
     dark_artifact_coupling: float = DEFAULT_DARK_ARTIFACT_COUPLING,
     image_shape_px: tuple[int, int] | None = None,
 ) -> list[ContactVerdict]:
@@ -464,6 +518,9 @@ def associate_all_contacts(
             size_min_aspect_hard,
             size_tile_edge_buffer_px,
             size_tile_edge_confidence,
+            size_tile_edge_min_size_m,
+            size_tile_edge_min_tile_ratio,
+            artifact_conf_ais_discount_power,
             dark_artifact_coupling,
             image_shape_px,
         )

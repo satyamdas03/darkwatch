@@ -63,6 +63,9 @@ def main() -> int:
     parser.add_argument("--static-confidence-floor", type=float, default=0.3, help="Minimum static-object confidence for any hit")
     parser.add_argument("--size-max-dim-soft-m", type=float, default=500.0, help="Soft size threshold for artifact evidence")
     parser.add_argument("--size-max-dim-hard-m", type=float, default=1_000.0, help="Hard size threshold for artifact evidence")
+    parser.add_argument("--size-tile-edge-min-size-m", type=float, default=80.0, help="Minimum contact size (m) for tile-edge artifact penalty to apply")
+    parser.add_argument("--size-tile-edge-min-tile-ratio", type=float, default=0.0, help="Minimum contact max-dim / min-tile-dim ratio for tile-edge penalty (0 disables)")
+    parser.add_argument("--artifact-conf-ais-discount-power", type=float, default=1.0, help="Power for (1 - p_matched_given_real) artifact discount for strong AIS matches")
     parser.add_argument("--dark-artifact-coupling", type=float, default=0.6, help="How strongly artifact evidence competes with dark-vessel residual")
     args = parser.parse_args()
 
@@ -102,6 +105,9 @@ def main() -> int:
         static_confidence_floor=args.static_confidence_floor,
         size_max_dim_soft_m=args.size_max_dim_soft_m,
         size_max_dim_hard_m=args.size_max_dim_hard_m,
+        size_tile_edge_min_size_m=args.size_tile_edge_min_size_m,
+        size_tile_edge_min_tile_ratio=args.size_tile_edge_min_tile_ratio,
+        artifact_conf_ais_discount_power=args.artifact_conf_ais_discount_power,
         dark_artifact_coupling=args.dark_artifact_coupling,
     )
 

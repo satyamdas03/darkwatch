@@ -1,0 +1,148 @@
+{
+  "scenes": [
+    {
+      "name": "2024-07-11",
+      "verdicts": "data/processed/fusion_20240711_v4_adaptive_recal2/verdicts.json"
+    },
+    {
+      "name": "2024-07-18",
+      "verdicts": "data/processed/fusion_20240718_v4_adaptive_recal2/verdicts.json"
+    },
+    {
+      "name": "2024-07-23",
+      "verdicts": "data/processed/fusion_20240723_v4_adaptive_recal2/verdicts.json"
+    }
+  ],
+  "labels": [
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240711T140858_20240711T140923_054714_06A94E_9466_vh_c4210_r14398_det0000",
+      "label": "ARTIFACT",
+      "note": "Low-confidence detection far outside operational theater; likely false positive"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240711T140858_20240711T140923_054714_06A94E_9466_vh_c3314_r10814_det0000",
+      "label": "ARTIFACT",
+      "note": "Static object Platform Irene at 72 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240718T015853_20240718T015918_054809_06ACA2_D01B_vh_c2380_r8843_det0000",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: MSC GIUSY at 126 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240718T015853_20240718T015918_054809_06ACA2_D01B_vh_c9548_r7947_det0000",
+      "label": "ARTIFACT",
+      "note": "Static object Platform Holly at 207 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240718T015853_20240718T015918_054809_06ACA2_D01B_vh_c2380_r9739_det0000",
+      "label": "ARTIFACT",
+      "note": "Static object Platform Harvest at 93 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240718T015853_20240718T015918_054809_06ACA2_D01B_vv_c9548_r7947_det0000",
+      "label": "UNKNOWN",
+      "note": "No AIS within gate, no platform nearby, but 244x375 m and near KNOX T corridor; ambiguous"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240718T015853_20240718T015918_054809_06ACA2_D01B_vh_c6860_r8843_det0000",
+      "label": "ARTIFACT",
+      "note": "Oversized detection (934 m x 383 m); likely azimuth ambiguity or wind streak"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240718T015853_20240718T015918_054809_06ACA2_D01B_vv_c2380_r9739_det0000",
+      "label": "ARTIFACT",
+      "note": "Static object Platform Hermosa at 114 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240718T015853_20240718T015918_054809_06ACA2_D01B_vv_c5068_r9739_det0000",
+      "label": "ARTIFACT",
+      "note": "Oversized detection (314 m x 989 m); likely azimuth ambiguity or wind streak"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240718T015853_20240718T015918_054809_06ACA2_D01B_vh_c6860_r7947_det0000",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: JACKIE C at 450 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240718T015853_20240718T015918_054809_06ACA2_D01B_vh_c7756_r7947_det0000",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: RYAN T at 313 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240718T015853_20240718T015918_054809_06ACA2_D01B_vh_c5964_r8843_det0000",
+      "label": "ARTIFACT",
+      "note": "Oversized detection (1788 m x 582 m); likely azimuth ambiguity or wind streak"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240718T015853_20240718T015918_054809_06ACA2_D01B_vh_c9548_r7947_det0002",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: KNOX T at 1336 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240718T015853_20240718T015918_054809_06ACA2_D01B_vh_c2380_r9739_det0001",
+      "label": "ARTIFACT",
+      "note": "Static object Platform Hidalgo at 107 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240718T015853_20240718T015918_054809_06ACA2_D01B_vv_c10444_r7947_det0000",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: KNOX T at 1498 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240718T015853_20240718T015918_054809_06ACA2_D01B_vh_c4172_r8843_det0000",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: OCEAN SENTINEL at 1644 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240718T015853_20240718T015918_054809_06ACA2_D01B_vh_c6860_r8843_det0001",
+      "label": "ARTIFACT",
+      "note": "Oversized detection (877 m x 325 m); likely azimuth ambiguity or wind streak"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240723T020701_20240723T020726_054882_06AF26_69FC_vh_c21010_r14232_det0000",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240723T020701_20240723T020726_054882_06AF26_69FC_vh_c21010_r14232_det0001",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240723T020701_20240723T020726_054882_06AF26_69FC_vv_c21010_r14232_det0000",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240723T020701_20240723T020726_054882_06AF26_69FC_vv_c21010_r14232_det0001",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240723T020701_20240723T020726_054882_06AF26_69FC_vv_c21010_r14232_det0002",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240723T020701_20240723T020726_054882_06AF26_69FC_vh_c21010_r14232_det0002",
+      "label": "ARTIFACT",
+      "note": "Tile-edge detection (xmin~0, ymin~0) within crowded cluster; likely truncation artifact"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240723T020701_20240723T020726_054882_06AF26_69FC_vh_c21010_r14232_det0003",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240723T020701_20240723T020726_054882_06AF26_69FC_vh_c21010_r14232_det0005",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240723T020701_20240723T020726_054882_06AF26_69FC_vh_c21010_r14232_det0009",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    }
+  ]
+}

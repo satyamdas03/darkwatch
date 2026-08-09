@@ -221,3 +221,47 @@ def test_oversized_contact_with_no_ais_is_artifact():
     verdict = associate_contact(contact, [], check_static_objects=True)
     assert verdict.verdict == Verdict.ARTIFACT
     assert verdict.p_artifact > 0.5
+
+
+def test_small_near_edge_contact_stays_dark():
+    """Regression: a small contact near the tile edge must not become ARTIFACT.
+
+    A 42 x 32 m contact a couple of pixels from the tile border is physically
+    plausible as a real vessel. Without the size guard the tile-edge penalty
+    (buffer 4 px, confidence 0.7) would flip the verdict to ARTIFACT.
+    """
+    contact = _contact_at(-120.60, 34.55, confidence=0.85)
+    contact.width_m = 42.0
+    contact.length_m = 32.0
+    contact.pixel_bbox = (47.94, 1.97, 52.17, 5.15)
+    verdict = associate_contact(
+        contact,
+        [],
+        check_static_objects=True,
+        image_shape_px=(256, 256),
+    )
+    assert verdict.verdict != Verdict.ARTIFACT
+    assert verdict.p_dark > verdict.p_artifact
+
+
+def test_strong_ais_match_discounts_static_artifact_penalty():
+    """Regression: a contact on a static object with a strong AIS match clears.
+
+    Platform Irene is a known static object. Without the match-aware discount,
+    the static-object penalty pushes the verdict to ARTIFACT. With a strong
+    in-gate AIS match the artifact evidence is down-weighted and the contact
+    should return to CLEAR.
+    """
+    # Platform Irene location from the static-object test.
+    contact = _contact_at(-120.73098060772287, 34.61066898035256, confidence=0.85)
+    df = pd.DataFrame(
+        [
+            {"BaseDateTime": "2024-07-11T14:08:00Z", "LAT": 34.61066898035256, "LON": -120.73098060772287, "SOG": 0.0},
+            {"BaseDateTime": "2024-07-11T14:10:00Z", "LAT": 34.61066898035256, "LON": -120.73098060772287, "SOG": 0.0},
+        ]
+    )
+    df["BaseDateTime"] = pd.to_datetime(df["BaseDateTime"], utc=True)
+    track = AISTrack(mmsi=123456789, messages=df)
+    verdict = associate_contact(contact, [track], check_static_objects=True)
+    assert verdict.verdict == Verdict.CLEAR
+    assert verdict.p_clear > verdict.p_artifact
