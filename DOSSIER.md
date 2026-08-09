@@ -680,7 +680,7 @@ darkwatch/
   - Keep Session #8 (`calibration_labels_v4_adaptive.json`) and Session #9 (`calibration_labels_v4_adaptive_recal.json`) labels under version control for traceability.
 - **Tests pass:** `python -m pytest tests/ -q` → **19 passed**.
 - **Next unlock:** collect more CLEAR/ARTIFACT/DARK scenes to move from 26 labels to a statistically robust calibration dataset; revisit the small tile-edge guard if more edge-truncation labels appear.
-- **Committed and pushed:** `{SESSION_10_COMMIT_HASH}` to `satyamdas03/darkwatch` with message `darkwatch: fix Session #9 fusion regressions with match-aware artifact discount and tile-edge size guard`.
+- **Committed and pushed:** `33e78b1` to `satyamdas03/darkwatch` with message `darkwatch: fix Session #9 fusion regressions with match-aware artifact discount and tile-edge size guard`.
 
 ### 2026-08-08 — Session #6: closing the SSDD→GRD detector domain gap
 - **Goal:** train a detector that generalizes from SSDD to real Sentinel-1 GRD by mixing real GRD training chips back into the dataset.
