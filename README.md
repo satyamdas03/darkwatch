@@ -116,6 +116,22 @@ Interactive map: [`notebooks/fusion_20240723_map.html`](notebooks/fusion_2024072
 
 > **Detector update (Session #7):** the mixed SSDD+GRD detector initially missed these small, low-backscatter targets. After fixing a stale-label augmentation bug and retraining `darkwatch_yolov8n_ssdd_grd_v4`, the model now recovers **both July 23 DARK vessels** — at confidences **0.764** and **0.370** with adaptive dB stretch. The SSDD→GRD domain gap is closed.
 
+### 2024-08-11: fourth scene and calibration dataset expansion
+
+A fourth scene produced **20 contacts** against **3 AIS tracks**:
+
+| Verdict | Count | Examples |
+|---|---|---|
+| **ARTIFACT** | 15 | 7 platform-adjacent contacts + 6 oversized sea-surface patches |
+| **CLEAR** | 2 | RYAN T (281 m from MMSI 367104050) |
+| **DARK** | 2 | No AIS within gate, no platform nearby |
+| **REVIEW** | 1 | Thin ambiguous streak |
+
+**Critical calibration correction:** one contact matched to **KNOX T** at 995 m was so oversized (1591 m × 1543 m) that it cannot physically be the cooperative vessel. It is labeled **ARTIFACT** despite a high AIS association score, teaching the model that AIS association must be gated by plausible vessel dimensions.
+
+Full report: [`notebooks/fusion_20240811_report.md`](notebooks/fusion_20240811_report.md).  
+Interactive map: [`notebooks/fusion_20240811_map.html`](notebooks/fusion_20240811_map.html).
+
 ---
 
 ## 🚀 Quick Start
@@ -199,15 +215,25 @@ Darkwatch is built to be **honest about uncertainty**, not just confident.
   - Per-class **Brier scores** (`CLEAR`, `DARK`, `ARTIFACT`).
   - **Reliability diagrams** showing predicted probability vs observed fraction.
   - Probability-distribution histograms by true label.
-- **`data/processed/calibration_labels.json`** is the auditable label source.
+- **`data/processed/calibration_labels_v4_adaptive_recal2.json`** is the active auditable label source (46 contacts across four scenes: 27 ARTIFACT, 7 CLEAR, 9 DARK, 3 UNKNOWN).
 - **`scripts/visualize_fusion.py`** creates interactive Folium maps with SAR contacts, AIS tracks, oil-platform markers, and 2 km gate circles.
+- **`scripts/download_ais_noaa.py`** downloads NOAA daily AIS zip files with resume support.
+- **`scripts/process_scene.py`** is an end-to-end wrapper: S1 download → prep tiles → detect → fetch AIS → fuse → report + map.
+
+Latest calibration metrics (46 labels):
+
+| Class | Labeled positives | Mean predicted | Brier score |
+|---|---|---|---|
+| CLEAR | 7 | 0.1168 | 0.0259 |
+| DARK | 9 | 0.3394 | 0.0929 |
+| ARTIFACT | 27 | 0.4411 | 0.0945 |
 
 Run the calibration report:
 
 ```bash
 python scripts/evaluate_calibration.py \
-  --labels data/processed/calibration_labels.json \
-  --output-dir notebooks/calibration
+  --labels data/processed/calibration_labels_v4_adaptive_recal2.json \
+  --output-dir notebooks/calibration_v4_adaptive_recal2
 ```
 
 Generate a fusion map:
@@ -268,17 +294,22 @@ darkwatch/
 | 0 | Recon & first real SAR on screen | ✅ |
 | 1 | Automated SAR ingestion & prep | ✅ |
 | 2 | Vessel detection baseline | ✅ Baseline trained; ✅ SSDD→GRD domain-gap closure complete (`darkwatch_yolov8n_ssdd_grd_v4`) |
-| 3 | **Fusion & Attribution** | ✅ Baseline complete: static-object exclusion, three real scenes, calibration framework, interactive maps; next: scale calibration with v4 + adaptive stretch |
+| 3 | **Fusion & Attribution** | ✅ Baseline complete: static-object exclusion, four real scenes, 46 labeled contacts, calibration framework, interactive maps; next: learned calibration layer or more scenes |
 | 4 | Behavior & intent (zones, persistence, rendezvous) | ⏳ |
 | 5 | Alert & evidence dossiers | ⏳ |
 
 **Next priorities:**
-1. **Scale calibration and validate with the v4 detector** (Session #8 direction):
-   - Re-run July 11/18/23 fusion with `darkwatch_yolov8n_ssdd_grd_v4` + adaptive stretch; compare verdicts and update `calibration_labels.json`.
-   - Collect additional scenes to get more **CLEAR** (AIS-matched) and **ARTIFACT** (platform / clutter) labels; current sample size (15 labels) is too small for strong empirical claims.
-2. **Empirical calibration:** ensure `p_dark = 0.73` actually means ~73% of similar cases are dark.
-3. **Adaptive-stretch production path:** decide when to use default vs adaptive dB stretch based on scene statistics, and expose the choice cleanly in the CLI/API.
-4. **Phase 4 behavior context:** MPA / EEZ / fishing-zone overlays and persistence tracking.
+1. **Implement a learned calibration layer** (highest impact for the core goal):
+   - Fit isotonic regression or Platt scaling on the 46-label dataset so that `p_dark = 0.73` actually means ~73% of similar cases are dark.
+   - Use scene-level cross-validation to avoid overfitting the small dataset.
+2. **Add a physical-plausibility gate for AIS matches:**
+   - The KNOX T oversized mismatch (1591 m × 1543 m SAR contact vs a single cooperative vessel) shows that high association probability is not enough.
+   - Penalize matches when SAR contact dimensions are incompatible with the AIS vessel type / reported size.
+3. **Collect more calibration scenes** to reach ~100 labeled contacts:
+   - Target busy traffic for more **CLEAR** labels and quiet open-water passes for more unambiguous **DARK** labels.
+   - Use `scripts/process_scene.py` to automate the download → prep → detect → fuse → label pipeline.
+4. **Adaptive-stretch production path:** decide when to use default vs adaptive dB stretch based on scene statistics, and expose the choice cleanly in the CLI/API.
+5. **Begin Phase 4 behavior context:** integrate public MPA / EEZ / fishing-zone overlays and start persistence tracking across repeat passes.
 
 ---
 
