@@ -1,17 +1,17 @@
 # Darkwatch Calibration Report
 
-**Generated:** 2026-08-09T00:19:17.384946Z
-**Labeled contacts:** 26
+**Generated:** 2026-08-09T01:22:43.295594Z
+**Labeled contacts:** 46
 **Label source:** `data\processed\calibration_labels_v4_adaptive_recal2.json`
 
 ---
 
 ## 1. Label Counts
 
-- **ARTIFACT:** 11
-- **CLEAR:** 6
-- **DARK:** 8
-- **UNKNOWN:** 1
+- **ARTIFACT:** 27
+- **CLEAR:** 7
+- **DARK:** 9
+- **UNKNOWN:** 3
 
 ---
 
@@ -19,39 +19,41 @@
 
 ### DARK
 
-- Labeled positives: 8
-- Mean predicted p_dark: 0.3908
-- Brier score: 0.1000
+- Labeled positives: 9
+- Mean predicted p_dark: 0.3394
+- Brier score: 0.0929
 
 | Predicted probability bin | Count | Observed DARK fraction | Mean predicted |
 |---|---|---|---|
-| 0.00 – 0.20 | 8 | 0.000 | 0.165 |
-| 0.20 – 0.40 | 8 | 0.000 | 0.271 |
-| 0.60 – 0.80 | 10 | 0.800 | 0.667 |
+| 0.00 – 0.20 | 15 | 0.000 | 0.151 |
+| 0.20 – 0.40 | 18 | 0.000 | 0.265 |
+| 0.40 – 0.60 | 1 | 0.000 | 0.578 |
+| 0.60 – 0.80 | 12 | 0.750 | 0.667 |
 
 ### CLEAR
 
-- Labeled positives: 6
-- Mean predicted p_clear: 0.1550
-- Brier score: 0.0249
+- Labeled positives: 7
+- Mean predicted p_clear: 0.1168
+- Brier score: 0.0259
 
 | Predicted probability bin | Count | Observed CLEAR fraction | Mean predicted |
 |---|---|---|---|
-| 0.00 – 0.20 | 20 | 0.000 | 0.000 |
-| 0.60 – 0.80 | 6 | 1.000 | 0.672 |
+| 0.00 – 0.20 | 38 | 0.000 | 0.000 |
+| 0.60 – 0.80 | 8 | 0.875 | 0.672 |
 
 ### ARTIFACT
 
-- Labeled positives: 11
-- Mean predicted p_artifact: 0.3365
-- Brier score: 0.0854
+- Labeled positives: 27
+- Mean predicted p_artifact: 0.4411
+- Brier score: 0.0945
 
 | Predicted probability bin | Count | Observed ARTIFACT fraction | Mean predicted |
 |---|---|---|---|
-| 0.00 – 0.20 | 16 | 0.062 | 0.131 |
-| 0.40 – 0.60 | 3 | 1.000 | 0.553 |
-| 0.60 – 0.80 | 6 | 1.000 | 0.699 |
-| 0.80 – 1.00 | 1 | 1.000 | 0.808 |
+| 0.00 – 0.20 | 20 | 0.100 | 0.132 |
+| 0.20 – 0.40 | 1 | 0.000 | 0.229 |
+| 0.40 – 0.60 | 6 | 1.000 | 0.563 |
+| 0.60 – 0.80 | 15 | 1.000 | 0.708 |
+| 0.80 – 1.00 | 4 | 1.000 | 0.857 |
 
 ---
 
@@ -59,18 +61,20 @@
 
 | Verdict | Labels | Count |
 |---|---|---|
-| ARTIFACT | ARTIFACT | 10 |
-| CLEAR | CLEAR | 6 |
+| ARTIFACT | ARTIFACT | 25 |
+| CLEAR | ARTIFACT | 1 |
+| CLEAR | CLEAR | 7 |
 | DARK | ARTIFACT | 1 |
-| DARK | DARK | 8 |
-| DARK | UNKNOWN | 1 |
+| DARK | DARK | 9 |
+| DARK | UNKNOWN | 2 |
+| REVIEW | UNKNOWN | 1 |
 
 ---
 
 ## 4. Key Findings
 
 - A well-calibrated model has Brier scores near 0 and reliability points hugging the diagonal.
-- With only 26 labeled contacts, these metrics are noisy; collecting more scenes is the top priority.
+- With only 46 labeled contacts, these metrics are noisy; collecting more scenes is the top priority.
 - The current model tends to assign moderate `p_dark` and `p_artifact` to platform-adjacent contacts; strong ARTIFACT labels (near platforms) help validate whether those probabilities are too low or too high.
 
 ---
@@ -105,6 +109,26 @@
 | `882_06AF26_69FC_vh_c21010_r14232_det0003` | 2024-07-23 | DARK | DARK | 0.1342 | 0.0000 | 0.6494 | 0.2165 | 23912 | — |
 | `882_06AF26_69FC_vh_c21010_r14232_det0005` | 2024-07-23 | DARK | DARK | 0.1364 | 0.0000 | 0.6477 | 0.2159 | 23859 | — |
 | `882_06AF26_69FC_vh_c21010_r14232_det0009` | 2024-07-23 | DARK | DARK | 0.1394 | 0.0000 | 0.6455 | 0.2152 | 24072 | — |
+| `55159_06B8DF_48C3_vh_c2397_r9735_det0000` | 2024-08-11 | ARTIFACT | ARTIFACT | 0.8809 | 0.0000 | 0.0893 | 0.0298 | 37668 | Platform Hidalgo |
+| `55159_06B8DF_48C3_vh_c2397_r9735_det0001` | 2024-08-11 | ARTIFACT | ARTIFACT | 0.8768 | 0.0000 | 0.0924 | 0.0308 | 32442 | Platform Hermosa |
+| `55159_06B8DF_48C3_vh_c5981_r7943_det0000` | 2024-08-11 | ARTIFACT | ARTIFACT | 0.8626 | 0.0000 | 0.1031 | 0.0344 | 12894 | Platform Heritage |
+| `55159_06B8DF_48C3_vh_c9565_r7943_det0000` | 2024-08-11 | ARTIFACT | ARTIFACT | 0.5893 | 0.0000 | 0.3080 | 0.1027 | 7491 | Platform Holly |
+| `55159_06B8DF_48C3_vv_c7773_r7943_det0000` | 2024-08-11 | CLEAR | CLEAR | 0.1499 | 0.6793 | 0.1707 | 0.0000 | 281 | Platform Hondo |
+| `55159_06B8DF_48C3_vh_c9565_r7943_det0001` | 2024-08-11 | DARK | DARK | 0.0781 | 0.0000 | 0.6914 | 0.2305 | 8681 | — |
+| `55159_06B8DF_48C3_vh_c4189_r8839_det0000` | 2024-08-11 | ARTIFACT | ARTIFACT | 0.7873 | 0.0000 | 0.1595 | 0.0532 | 15525 | — |
+| `55159_06B8DF_48C3_vh_c2397_r9735_det0002` | 2024-08-11 | ARTIFACT | ARTIFACT | 0.7794 | 0.0000 | 0.1655 | 0.0552 | 35583 | Platform Harvest |
+| `55159_06B8DF_48C3_vh_c6877_r7943_det0000` | 2024-08-11 | ARTIFACT | ARTIFACT | 0.7265 | 0.0000 | 0.2051 | 0.0684 | 4799 | Platform Harmony |
+| `5159_06B8DF_48C3_vh_c2397_r11527_det0000` | 2024-08-11 | ARTIFACT | ARTIFACT | 0.6846 | 0.0000 | 0.2365 | 0.0788 | 43038 | Platform Irene |
+| `55159_06B8DF_48C3_vh_c5981_r8839_det0000` | 2024-08-11 | ARTIFACT | ARTIFACT | 0.7178 | 0.0000 | 0.2415 | 0.0407 | 2847 | — |
+| `55159_06B8DF_48C3_vh_c6877_r8839_det0000` | 2024-08-11 | ARTIFACT | ARTIFACT | 0.5864 | 0.0000 | 0.3102 | 0.1034 | 10228 | — |
+| `55159_06B8DF_48C3_vh_c5085_r8839_det0000` | 2024-08-11 | ARTIFACT | ARTIFACT | 0.5460 | 0.0000 | 0.3405 | 0.1135 | 12420 | — |
+| `55159_06B8DF_48C3_vh_c3293_r9735_det0001` | 2024-08-11 | ARTIFACT | ARTIFACT | 0.6776 | 0.0000 | 0.2418 | 0.0806 | 32432 | Platform Hermosa |
+| `55159_06B8DF_48C3_vh_c4189_r8839_det0001` | 2024-08-11 | ARTIFACT | ARTIFACT | 0.6870 | 0.0000 | 0.2348 | 0.0783 | 15903 | — |
+| `55159_06B8DF_48C3_vv_c9565_r7943_det0002` | 2024-08-11 | ARTIFACT | CLEAR | 0.1781 | 0.6645 | 0.1575 | 0.0000 | 995 | — |
+| `55159_06B8DF_48C3_vv_c8669_r8839_det0000` | 2024-08-11 | UNKNOWN | DARK | 0.1404 | 0.0000 | 0.6447 | 0.2149 | 12737 | — |
+| `55159_06B8DF_48C3_vh_c4189_r9735_det0000` | 2024-08-11 | ARTIFACT | ARTIFACT | 0.6806 | 0.0000 | 0.2395 | 0.0798 | 15537 | — |
+| `55159_06B8DF_48C3_vh_c8669_r7943_det0000` | 2024-08-11 | ARTIFACT | ARTIFACT | 0.6799 | 0.0000 | 0.2401 | 0.0800 | 10590 | — |
+| `55159_06B8DF_48C3_vh_c9565_r7047_det0000` | 2024-08-11 | UNKNOWN | REVIEW | 0.2294 | 0.0000 | 0.5780 | 0.1927 | 6644 | — |
 
 ---
 

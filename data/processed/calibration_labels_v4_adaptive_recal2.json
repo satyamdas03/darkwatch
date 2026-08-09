@@ -11,6 +11,10 @@
     {
       "name": "2024-07-23",
       "verdicts": "data/processed/fusion_20240723_v4_adaptive_recal2/verdicts.json"
+    },
+    {
+      "name": "2024-08-11",
+      "verdicts": "data/processed/fusion_20240811_v4_adaptive/verdicts.json"
     }
   ],
   "labels": [
@@ -143,6 +147,106 @@
       "contact_id": "S1A_IW_GRDH_1SDV_20240723T020701_20240723T020726_054882_06AF26_69FC_vh_c21010_r14232_det0009",
       "label": "DARK",
       "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240811T015853_20240811T015918_055159_06B8DF_48C3_vh_c2397_r9735_det0000",
+      "label": "ARTIFACT",
+      "note": "Static object Platform Hidalgo at 114 m; elongated 197 m x 523 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240811T015853_20240811T015918_055159_06B8DF_48C3_vh_c2397_r9735_det0001",
+      "label": "ARTIFACT",
+      "note": "Static object Platform Hermosa at 126 m; elongated 166 m x 452 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240811T015853_20240811T015918_055159_06B8DF_48C3_vh_c5981_r7943_det0000",
+      "label": "ARTIFACT",
+      "note": "Static object Platform Heritage at 121 m; 285 m x 241 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240811T015853_20240811T015918_055159_06B8DF_48C3_vh_c9565_r7943_det0000",
+      "label": "ARTIFACT",
+      "note": "Static object Platform Holly at 208 m; small 147 m x 210 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240811T015853_20240811T015918_055159_06B8DF_48C3_vv_c7773_r7943_det0000",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: RYAN T at 281 m (moored at Platform Hondo); compact vessel"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240811T015853_20240811T015918_055159_06B8DF_48C3_vh_c9565_r7943_det0001",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform nearby, bright vessel-like 270 m x 355 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240811T015853_20240811T015918_055159_06B8DF_48C3_vh_c4189_r8839_det0000",
+      "label": "ARTIFACT",
+      "note": "Oversized 1722 m x 1301 m bright patch; sea-surface clutter, not a single vessel"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240811T015853_20240811T015918_055159_06B8DF_48C3_vh_c2397_r9735_det0002",
+      "label": "ARTIFACT",
+      "note": "Static object Platform Harvest at 101 m; elongated 199 m x 425 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240811T015853_20240811T015918_055159_06B8DF_48C3_vh_c6877_r7943_det0000",
+      "label": "ARTIFACT",
+      "note": "Static object Platform Harmony at 146 m; 256 m x 260 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240811T015853_20240811T015918_055159_06B8DF_48C3_vh_c2397_r11527_det0000",
+      "label": "ARTIFACT",
+      "note": "Static object Platform Irene at 156 m; elongated 167 m x 495 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240811T015853_20240811T015918_055159_06B8DF_48C3_vh_c5981_r8839_det0000",
+      "label": "ARTIFACT",
+      "note": "Oversized 1573 m x 581 m streaky bright patch; sea-surface artifact"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240811T015853_20240811T015918_055159_06B8DF_48C3_vh_c6877_r8839_det0000",
+      "label": "ARTIFACT",
+      "note": "Oversized 877 m x 354 m streaky bright patch; sea-surface artifact"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240811T015853_20240811T015918_055159_06B8DF_48C3_vh_c5085_r8839_det0000",
+      "label": "ARTIFACT",
+      "note": "Oversized 856 m x 452 m bright textured patch; sea-surface artifact"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240811T015853_20240811T015918_055159_06B8DF_48C3_vh_c3293_r9735_det0001",
+      "label": "ARTIFACT",
+      "note": "Static object Platform Hermosa at 220 m; elongated 250 m x 973 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240811T015853_20240811T015918_055159_06B8DF_48C3_vh_c4189_r8839_det0001",
+      "label": "ARTIFACT",
+      "note": "Oversized 1039 m x 823 m bright patch; sea-surface artifact"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240811T015853_20240811T015918_055159_06B8DF_48C3_vv_c9565_r7943_det0002",
+      "label": "ARTIFACT",
+      "note": "AIS match to KNOX T at 995 m but oversized 1591 m x 1543 m bright area; not the vessel"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240811T015853_20240811T015918_055159_06B8DF_48C3_vv_c8669_r8839_det0000",
+      "label": "UNKNOWN",
+      "note": "Very faint 411 m x 398 m patch; no AIS or platform nearby; cannot confirm real vessel"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240811T015853_20240811T015918_055159_06B8DF_48C3_vh_c4189_r9735_det0000",
+      "label": "ARTIFACT",
+      "note": "Oversized 1681 m x 1494 m bright patch; sea-surface artifact"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240811T015853_20240811T015918_055159_06B8DF_48C3_vh_c8669_r7943_det0000",
+      "label": "ARTIFACT",
+      "note": "Oversized 1367 m x 380 m streaky bright patch; sea-surface artifact"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240811T015853_20240811T015918_055159_06B8DF_48C3_vh_c9565_r7047_det0000",
+      "label": "UNKNOWN",
+      "note": "Thin 88 m x 508 m low-confidence streak; ambiguous vessel vs wake/azimuth ambiguity"
     }
   ]
 }

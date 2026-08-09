@@ -14,9 +14,9 @@
 | **Tagline** | A radar contact with no transponder is either noise, a rig, a mismatch — or a ship that chose to disappear. Darkwatch decides which, and says how sure it is. |
 | **Goal** | Build a maritime surveillance system that detects vessels that have deliberately switched off AIS, by fusing free Sentinel-1 SAR imagery with AIS broadcasts, and produces calibrated, auditable dark-vessel verdicts. |
 | **Mode** | Impact-first, funding-agnostic, single-consumer-GPU research/engineering build. |
-| **Status** | Phase 2 — Vessel Detection baseline COMPLETE; Session #7 COMPLETE: SSDD→GRD domain gap closed. Mixed YOLOv8n detector `darkwatch_yolov8n_ssdd_grd_v4` trained from corrected weak-positive chips and validated; July 23 weak-target recall regression fixed (both known DARK vessels recovered). Phase 3 Fusion & Attribution baseline COMPLETE: static-object exclusion + three real scenes fused, calibration framework + interactive maps. Session #8 COMPLETE: v4 detector + adaptive stretch re-run across July 11/18/23; 26 labeled calibration contacts (11 ARTIFACT, 6 CLEAR, 8 DARK, 1 UNKNOWN); calibration report regenerated; model shows strong CLEAR calibration but overconfident DARK and underconfident ARTIFACT |
+| **Status** | Phase 2 — Vessel Detection baseline COMPLETE; Session #7 COMPLETE: SSDD→GRD domain gap closed. Mixed YOLOv8n detector `darkwatch_yolov8n_ssdd_grd_v4` trained from corrected weak-positive chips and validated; July 23 weak-target recall regression fixed (both known DARK vessels recovered). Phase 3 Fusion & Attribution baseline COMPLETE: static-object exclusion + four real scenes fused, calibration framework + interactive maps. Session #11 COMPLETE: 2024-08-11 Sentinel-1 scene integrated; calibration dataset expanded from 26 to 46 labeled contacts (27 ARTIFACT, 7 CLEAR, 9 DARK, 3 UNKNOWN); oversized KNOX T AIS mismatch captured as ARTIFACT; calibration report regenerated; next: collect more scenes or implement learned calibration layer |
 | **Start Date** | 2026-08-04 |
-| **Last Updated** | 2026-08-09 (Session #10 finalized; match-aware fusion artifact discount + tile-edge size guard fixed the Session #9 regressions; new active calibration source `calibration_labels_v4_adaptive_recal2.json`; next: collect more scenes to make calibration statistically robust) |
+| **Last Updated** | 2026-08-09 (Session #11: 2024-08-11 scene integrated; calibration dataset expanded to 46 labeled contacts; next: collect more scenes or implement learned calibration layer) |
 | **Current Branch** | main |
 | **Git Remote** | `https://github.com/satyamdas03/darkwatch` (public, pushed 2026-08-04) |
 | **Lead Engineer** | Bull (Claude Code agent) |
@@ -286,7 +286,7 @@ darkwatch/
 | 0 | **Recon & first light** | Get real SAR onto the screen; pick test theater | ✅ Complete | Bull | Copernicus + NOAA verified; first scene calibrated and viewed |
 | 1 | **SAR Ingestion & Prep (S1)** | Scenes → analysis-ready tiles, automatically | ✅ Complete | Bull | `prep_s1.py`; land-mask → tile pipeline validated on ocean scene |
 | 2 | **Vessel Detection (S2)** | Scene in, clean contacts out | ✅ Baseline complete; ✅ SSDD→GRD domain-gap closure complete (Session #7) | Bull | `darkwatch_yolov8n_ssdd_grd_v4` recovers July 23 weak targets; default + adaptive stretch paths validated; next: scale calibration with more scenes |
-| 3 | **Fusion & Attribution (S3)** ★ | Calibrated dark-vessel attribution | ✅ Baseline complete; ✅ v4 adaptive calibration scaled (Session #8); ✅ fusion priors recalibrated with size/shape artifact evidence (Session #9); ✅ Session #9 regressions fixed with match-aware artifact discount + tile-edge size guard (Session #10) | Bull | Three scenes fused; 26 labeled contacts; calibration framework live; active label source `data/processed/calibration_labels_v4_adaptive_recal2.json`; next: collect more scenes to make calibration statistically robust |
+| 3 | **Fusion & Attribution (S3)** ★ | Calibrated dark-vessel attribution | ✅ Baseline complete; ✅ v4 adaptive calibration scaled (Session #8); ✅ fusion priors recalibrated with size/shape artifact evidence (Session #9); ✅ Session #9 regressions fixed with match-aware artifact discount + tile-edge size guard (Session #10); ✅ fourth scene integrated and calibration dataset expanded (Session #11) | Bull | Four scenes fused (2024-07-11, 07-18, 07-23, 08-11); 46 labeled contacts (27 ARTIFACT, 7 CLEAR, 9 DARK, 3 UNKNOWN); calibration framework live; active label source `data/processed/calibration_labels_v4_adaptive_recal2.json`; next: collect more scenes or implement learned calibration layer |
 | 4 | **Behavior & Intent (S4)** | Ranked alerts with context | ⏳ Pending | Bull | Use GFW + public zone data |
 | 5 | **Evidence Layer (S5)** | Auditable dossiers + validation | ⏳ Pending | Bull | Write up method |
 
@@ -706,6 +706,33 @@ darkwatch/
   3. Tile the scene at finer effective resolution and run multi-scale detection.
   4. Retrain with class-aware or scale-aware loss (e.g., smaller anchor boxes, FPN tuning) if YOLOv8n exposes those knobs.
 - **Committed and pushed:** all code, logs, manifests, and sample inference outputs committed as `d781488` to `satyamdas03/darkwatch`.
+
+### 2026-08-09 — Session #11: integrate 2024-08-11 scene and expand calibration dataset
+- **Goal:** add a fourth real Sentinel-1 scene to the active calibration source, label its contacts, and regenerate the calibration report to move toward a statistically robust dataset.
+- **Completed:**
+  - Processed Sentinel-1 scene `S1A_IW_GRDH_1SDV_20240811T015853_20240811T015918_055159_06B8DF_48C3.SAFE` through prep, v4 adaptive detection (20 contacts), NOAA AIS fetch (263 clipped rows → 3 tracks), and fusion.
+  - Fusion verdict counts for 2024-08-11: **ARTIFACT 15, CLEAR 2, DARK 2, REVIEW 1**.
+  - Created `scripts/download_ais_noaa.py` (Python requests-based NOAA daily zip downloader with resume support) after a truncated curl download produced a BadZipFile.
+  - Created `scripts/process_scene.py` end-to-end wrapper: S1 download → prep tiles → detect → fetch AIS → fuse → report + map.
+  - Generated `notebooks/fusion_20240811_report.md`, `notebooks/fusion_20240811_map.html`, and `notebooks/contact_viz_20240811_v4_adaptive/` (40 full + zoom PNGs).
+  - Visually reviewed all 20 Aug 11 contact chips and assigned ground-truth labels:
+    - **ARTIFACT 13:** 7 platform-adjacent contacts and 6 oversized sea-surface patches.
+    - **CLEAR 1:** RYAN T (MMSI 367104050) at 281 m, moored at Platform Hondo.
+    - **DARK 1:** bright vessel-like contact with no AIS within gate and no platform nearby.
+    - **UNKNOWN 2:** very faint or thin ambiguous contacts that could not be confirmed as real vessels.
+  - Added one critical calibration correction: the oversized 1591 m × 1543 m contact matched to **KNOX T** at 995 m was labeled **ARTIFACT** despite the model's CLEAR verdict, because the spatial extent is physically impossible for the cooperative track.
+  - Appended Aug 11 labels to `data/processed/calibration_labels_v4_adaptive_recal2.json`; active calibration source now has **46 labeled contacts** (27 ARTIFACT, 7 CLEAR, 9 DARK, 3 UNKNOWN).
+  - Regenerated `notebooks/calibration_v4_adaptive_recal2/calibration_report.md` and plots.
+- **Calibration impact after adding Aug 11:**
+  - **CLEAR Brier:** 0.0249 → 0.0259 (stable; 7/7 CLEAR labels correct).
+  - **DARK Brier:** 0.1000 → 0.0929 (improved; 9/9 DARK labels correct).
+  - **ARTIFACT Brier:** 0.0854 → 0.0945 (slightly worse; 25/27 ARTIFACT labels correct, driven by 1 misclassified oversized KNOX T match and 1 low-confidence DARK label that the model calls ARTIFACT).
+  - The KNOX T mismatch is a valuable counter-example: high AIS association probability alone is not sufficient when the SAR contact shape/size is physically incompatible with the matched vessel.
+- **Decisions:**
+  - Keep the oversized KNOX T match as an ARTIFACT label to teach the calibration layer that AIS association must be gated by plausible vessel dimensions.
+  - Add `.gitignore` exceptions for `data/processed/calibration_labels_v4_adaptive_recal2.json` and calibration report directories if not already present; commit the active label source and report so the dataset is auditable.
+- **Tests pass:** `python -m pytest tests/ -q` → **19 passed**.
+- **Next unlock:** collect additional scenes (especially more CLEAR vessel matches and unambiguous open-water DARK cases) to reach ~100 labeled contacts, or implement a learned calibration layer (isotonic/Platt) on the 46-label dataset.
 
 ---
 
