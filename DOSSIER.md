@@ -286,7 +286,7 @@ darkwatch/
 | 0 | **Recon & first light** | Get real SAR onto the screen; pick test theater | ✅ Complete | Bull | Copernicus + NOAA verified; first scene calibrated and viewed |
 | 1 | **SAR Ingestion & Prep (S1)** | Scenes → analysis-ready tiles, automatically | ✅ Complete | Bull | `prep_s1.py`; land-mask → tile pipeline validated on ocean scene |
 | 2 | **Vessel Detection (S2)** | Scene in, clean contacts out | ✅ Baseline complete; ✅ SSDD→GRD domain-gap closure complete (Session #7) | Bull | `darkwatch_yolov8n_ssdd_grd_v4` recovers July 23 weak targets; default + adaptive stretch paths validated; next: scale calibration with more scenes |
-| 3 | **Fusion & Attribution (S3)** ★ | Calibrated dark-vessel attribution | ✅ Baseline complete; ✅ v4 adaptive calibration scaled (Session #8); ✅ fusion priors recalibrated with size/shape artifact evidence (Session #9); ✅ Session #9 regressions fixed with match-aware artifact discount + tile-edge size guard (Session #10); ✅ fourth scene integrated and calibration dataset expanded (Session #11) | Bull | Four scenes fused (2024-07-11, 07-18, 07-23, 08-11); 46 labeled contacts (27 ARTIFACT, 7 CLEAR, 9 DARK, 3 UNKNOWN); calibration framework live; active label source `data/processed/calibration_labels_v4_adaptive_recal2.json`; next: collect more scenes or implement learned calibration layer |
+| 3 | **Fusion & Attribution (S3)** ★ | Calibrated dark-vessel attribution | ✅ Baseline complete; ✅ v4 adaptive calibration scaled (Session #8); ✅ fusion priors recalibrated with size/shape artifact evidence (Session #9); ✅ Session #9 regressions fixed with match-aware artifact discount + tile-edge size guard (Session #10); ✅ fourth scene integrated and calibration dataset expanded (Session #11); next: learned calibration layer + physical-plausibility AIS gate | Bull | Four scenes fused (2024-07-11, 07-18, 07-23, 08-11); 46 labeled contacts (27 ARTIFACT, 7 CLEAR, 9 DARK, 3 UNKNOWN); calibration framework live; active label source `data/processed/calibration_labels_v4_adaptive_recal2.json`; next: implement isotonic/Platt calibration, add size/type AIS-match gate, then collect more scenes |
 | 4 | **Behavior & Intent (S4)** | Ranked alerts with context | ⏳ Pending | Bull | Use GFW + public zone data |
 | 5 | **Evidence Layer (S5)** | Auditable dossiers + validation | ⏳ Pending | Bull | Write up method |
 
@@ -359,6 +359,9 @@ darkwatch/
 | 2026-08-05 | ✅ Baseline calibration framework shipped (`scripts/evaluate_calibration.py` + 15 labels) | High — empirical calibration now needs more scenes, especially CLEAR/ARTIFACT, to reach statistical confidence | Bull |
 | 2026-08-05 | ✅ RESOLVED — SSDD→GRD domain gap / July 23 weak-target recall regression fixed by v4 mixed detector + photometric weak-positive augmentation | High — `darkwatch_yolov8n_ssdd_grd_v4` recovers both July 23 DARK vessels; domain gap is closed for current test theater | Bull |
 | 2026-08-05 | ✅ All work committed/pushed: `61a1dc5` | — | Bull |
+| 2026-08-09 | ✅ Session #11: 2024-08-11 scene integrated; 46 labeled contacts; next: learned calibration + physical-plausibility gate | High — moves the core calibration goal forward before more scene collection | Bull |
+| 2026-08-09 | **OPEN — Implement learned calibration layer on 46-label dataset** | High — makes `p_dark = 0.73` actually mean ~73% dark; blocker to strong empirical claims | Bull |
+| 2026-08-09 | **OPEN — Add physical-plausibility gate for AIS matches** | High — prevents oversized SAR contacts from being falsely matched to single cooperative vessels (KNOX T lesson) | Bull |
 
 ---
 
@@ -839,6 +842,8 @@ For each DARK/REVIEW verdict, surface:
 2. `P(no AIS track claims it | AIS)` — association / explain-away.
 3. `P(not rig/fixed false zone | context)` — static-object exclusion.
 4. `P(not innocent AIS gap | AIS quality / timing)` — dropout vs switch-off.
+5. `P(SAR size/type compatible with matched AIS track)` — physical-plausibility gate (pending implementation).
+6. `P(calibrated | empirical labels)` — learned calibration mapping raw fusion probabilities to observed frequencies (pending implementation).
 
 Final `P(dark)` is a function of these; the **weakest link** is reported explicitly.
 
