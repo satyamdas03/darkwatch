@@ -227,27 +227,28 @@ Darkwatch is built to be **honest about uncertainty**, not just confident.
   - Per-class **Brier scores** (`CLEAR`, `DARK`, `ARTIFACT`).
   - **Reliability diagrams** showing predicted probability vs observed fraction.
   - Probability-distribution histograms by true label.
-- **`data/processed/calibration_labels_v4_adaptive_recal3.json`** is the active auditable label source (46 contacts across four scenes: 27 ARTIFACT, 7 CLEAR, 9 DARK, 3 UNKNOWN).
-- **`data/processed/fusion_calibration_v4_adaptive_recal3.json`** is the saved per-class Platt calibration model applied at recal3 inference.
+- **`data/processed/calibration_labels_v4_adaptive_combined.json`** is the active auditable label source (122 contacts across Santa Barbara + Gulf of Mexico: 56 ARTIFACT, 12 CLEAR, 51 DARK, 3 UNKNOWN).
+- **`data/processed/fusion_calibration_v4_adaptive_combined.json`** is the saved per-class Platt calibration model applied at inference by default.
 - **`scripts/fit_calibration.py`** fits a new calibration model from labels and raw verdicts.
 - **`scripts/visualize_fusion.py`** creates interactive Folium maps with SAR contacts, AIS tracks, oil-platform markers, and 2 km gate circles.
 - **`scripts/download_ais_noaa.py`** downloads NOAA daily AIS zip files with resume support.
 - **`scripts/process_scene.py`** is an end-to-end wrapper: S1 download → prep tiles → detect → fetch AIS → fuse → report + map.
 
-Latest recal3 calibration metrics (46 labels, in-sample after gate + calibration):
+Latest combined calibration metrics (122 labels, in-sample after gate + calibration):
 
 | Class | Labeled positives | Mean predicted | Brier score |
 |---|---|---|---|
-| CLEAR | 7 | 0.0718 | 0.0679 |
-| DARK | 9 | 0.2815 | 0.0641 |
-| ARTIFACT | 27 | 0.5995 | 0.0793 |
+| CLEAR | 12 | 0.0566 | 0.0311 |
+| DARK | 51 | 0.4490 | 0.1428 |
+| ARTIFACT | 56 | 0.5231 | 0.1653 |
 
 Run the calibration report:
 
 ```bash
 python scripts/evaluate_calibration.py \
-  --labels data/processed/calibration_labels_v4_adaptive_recal3.json \
-  --output-dir notebooks/calibration_recal3
+  --labels data/processed/calibration_labels_v4_adaptive_combined.json \
+  --calibration-model data/processed/fusion_calibration_v4_adaptive_combined.json \
+  --output-dir notebooks/calibration_combined_insample
 ```
 
 Generate a fusion map:
@@ -259,6 +260,19 @@ python scripts/visualize_fusion.py \
   --verdicts data/processed/fusion_20240718/verdicts.json \
   --output notebooks/fusion_20240718_map.html
 ```
+
+### Cross-theater validation lesson
+
+A calibration model trained only on Santa Barbara **does not transfer** cleanly to the Gulf of Mexico. On 58 out-of-sample Gulf labels:
+
+| Model | DARK Brier | ARTIFACT Brier | CLEAR Brier |
+|---|---|---|---|
+| Raw fusion | 0.1606 | 0.1653 | 0.0036 |
+| Recal3 (46 SB labels) | 0.1472 | 0.1674 | 0.0005 |
+| Recal4 (64 SB labels) | 0.2593 | 0.1932 | 0.0067 |
+| **Combined (122 SB + Gulf labels)** | **0.1631** | **0.1450** | **0.0045** |
+
+The Santa-Barbara-only recal4 model is artifact-heavy (43/64 ARTIFACT) and suppresses DARK probabilities too strongly in a theater where most real contacts are dark. The combined cross-theater model balances both. **Operational rule:** collect ~20 local labels before trusting calibrated probabilities in a new theater; raw probabilities may be safer until local calibration is available.
 
 ---
 

@@ -1,0 +1,300 @@
+{
+  "scenes": [
+    {
+      "name": "2024-07-08-gulf",
+      "verdicts": "data/processed/fusion_20240708_v4_adaptive/verdicts.json"
+    }
+  ],
+  "labels": [
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c12978_r4767_det0000",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: WD143 SHELL RIG at 76 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c12978_r7455_det0000",
+      "label": "ARTIFACT",
+      "note": "Contact center outside operational theater"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c8498_r4767_det0000",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c8498_r2975_det0000",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: BALDER at 65 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c10290_r4767_det0000",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c9394_r2079_det0000",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c10290_r6559_det0000",
+      "label": "ARTIFACT",
+      "note": "Contact center outside operational theater"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c12082_r7455_det0001",
+      "label": "ARTIFACT",
+      "note": "Contact center outside operational theater"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c4914_r287_det0000",
+      "label": "ARTIFACT",
+      "note": "Contact center outside operational theater"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c11186_r6559_det0000",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c11186_r7455_det0000",
+      "label": "ARTIFACT",
+      "note": "Contact center outside operational theater"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c6706_r6559_det0000",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c6706_r2079_det0000",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c11186_r4767_det0000",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c4914_r1183_det0000",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c4914_r3871_det0000",
+      "label": "ARTIFACT",
+      "note": "Oversized detection (170 m x 508 m); likely azimuth ambiguity or wind streak"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c11186_r5663_det0000",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c12082_r7455_det0002",
+      "label": "ARTIFACT",
+      "note": "Contact center outside operational theater"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c10290_r6559_det0001",
+      "label": "ARTIFACT",
+      "note": "Contact center outside operational theater"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c12978_r6559_det0000",
+      "label": "ARTIFACT",
+      "note": "Contact center outside operational theater"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c12978_r2079_det0000",
+      "label": "ARTIFACT",
+      "note": "Contact center outside operational theater"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c10290_r4767_det0001",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c5810_r5663_det0000",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c7602_r2079_det0000",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c12978_r7455_det0002",
+      "label": "ARTIFACT",
+      "note": "Contact center outside operational theater"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c7602_r287_det0000",
+      "label": "ARTIFACT",
+      "note": "Contact center outside operational theater"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c5810_r5663_det0001",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c4914_r287_det0001",
+      "label": "ARTIFACT",
+      "note": "Contact center outside operational theater"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c12978_r6559_det0001",
+      "label": "ARTIFACT",
+      "note": "Contact center outside operational theater"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c12082_r3871_det0000",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c5810_r2975_det0000",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c8498_r6559_det0000",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c6706_r287_det0000",
+      "label": "ARTIFACT",
+      "note": "Contact center outside operational theater"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c11186_r6559_det0001",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: AGNES CANDIES at 174 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c5810_r5663_det0002",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c6706_r5663_det0000",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c6706_r7455_det0000",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c5810_r6559_det0000",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c4914_r3871_det0001",
+      "label": "ARTIFACT",
+      "note": "Contact center outside operational theater"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c12082_r5663_det0000",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c6706_r2975_det0000",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c8498_r5663_det0000",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c5810_r6559_det0001",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c5810_r5663_det0003",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c5810_r6559_det0002",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c6706_r2975_det0001",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c10290_r7455_det0002",
+      "label": "ARTIFACT",
+      "note": "Contact center outside operational theater"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c5810_r6559_det0003",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c4914_r6559_det0000",
+      "label": "ARTIFACT",
+      "note": "Contact center outside operational theater"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c4914_r287_det0002",
+      "label": "ARTIFACT",
+      "note": "Contact center outside operational theater"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c4914_r5663_det0000",
+      "label": "ARTIFACT",
+      "note": "Oversized detection (113 m x 1045 m); likely azimuth ambiguity or wind streak"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c11186_r5663_det0001",
+      "label": "ARTIFACT",
+      "note": "Detection bounding box touches tile edge; likely truncation artifact"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c12082_r6559_det0001",
+      "label": "ARTIFACT",
+      "note": "Detection bounding box touches tile edge; likely truncation artifact"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c10290_r3871_det0000",
+      "label": "ARTIFACT",
+      "note": "Detection bounding box touches tile edge; likely truncation artifact"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c11186_r7455_det0001",
+      "label": "ARTIFACT",
+      "note": "Contact center outside operational theater"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c6706_r1183_det0000",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c11186_r3871_det0000",
+      "label": "ARTIFACT",
+      "note": "Detection bounding box touches tile edge; likely truncation artifact"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240708T000210_20240708T000235_054662_06A78F_F3B2_vh_c12978_r7455_det0003",
+      "label": "ARTIFACT",
+      "note": "Contact center outside operational theater"
+    }
+  ]
+}

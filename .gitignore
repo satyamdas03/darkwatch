@@ -8,13 +8,6 @@ __pycache__/
 .ruff_cache/
 *.log
 .ipynb_checkpoints/
-# Exception: calibration labels + models are small and needed to reproduce the report
-!data/processed/calibration_labels.json
-!data/processed/calibration_labels_v4_adaptive.json
-!data/processed/calibration_labels_v4_adaptive_recal.json
-!data/processed/calibration_labels_v4_adaptive_recal2.json
-!data/processed/calibration_labels_v4_adaptive_recal3.json
-!data/processed/fusion_calibration_v4_adaptive_recal3.json
 # Large downloaded / generated data (keep broad + specific for clarity)
 data/
 data/raw/s1/*.zip
@@ -28,8 +21,19 @@ data/external/*.exe
 data/external/*.msi
 data/external/7za_dir/
 data/processed/*/
+# Exception: calibration labels + models are small and needed to reproduce the report
 !data/processed/calibration_labels.json
 !data/processed/calibration_labels_v4_adaptive.json
+!data/processed/calibration_labels_v4_adaptive_recal.json
+!data/processed/calibration_labels_v4_adaptive_recal2.json
+!data/processed/calibration_labels_v4_adaptive_recal3.json
+!data/processed/calibration_labels_v4_adaptive_recal4_auto.json
+!data/processed/calibration_labels_v4_adaptive_gulf_auto.json
+!data/processed/calibration_labels_v4_adaptive_gulf_reviewed.json
+!data/processed/calibration_labels_v4_adaptive_combined.json
+!data/processed/fusion_calibration_v4_adaptive_recal3.json
+!data/processed/fusion_calibration_v4_adaptive_recal4.json
+!data/processed/fusion_calibration_v4_adaptive_combined.json
 # Models and base weights
 models/
 yolov8n.pt
@@ -43,3 +47,9 @@ notebooks/tile_*.png
 !notebooks/calibration_v4_adaptive_recal/
 !notebooks/calibration_v4_adaptive_recal2/
 !notebooks/calibration_recal3/
+!notebooks/calibration_recal4_*/
+!notebooks/calibration_combined_*/
+!notebooks/contact_viz_20240816_v4_adaptive/
+!notebooks/contact_viz_20240828_v4_adaptive/
+!notebooks/contact_viz_20240708_v4_adaptive/
+!notebooks/review_grid_*.png

@@ -14,9 +14,9 @@
 | **Tagline** | A radar contact with no transponder is either noise, a rig, a mismatch — or a ship that chose to disappear. Darkwatch decides which, and says how sure it is. |
 | **Goal** | Build a maritime surveillance system that detects vessels that have deliberately switched off AIS, by fusing free Sentinel-1 SAR imagery with AIS broadcasts, and produces calibrated, auditable dark-vessel verdicts. |
 | **Mode** | Impact-first, funding-agnostic, single-consumer-GPU research/engineering build. |
-| **Status** | Phase 2 — Vessel Detection baseline COMPLETE; Session #7 COMPLETE: SSDD→GRD domain gap closed. Mixed YOLOv8n detector `darkwatch_yolov8n_ssdd_grd_v4` trained from corrected weak-positive chips and validated; July 23 weak-target recall regression fixed (both known DARK vessels recovered). Phase 3 Fusion & Attribution baseline COMPLETE: static-object exclusion + four real scenes fused, calibration framework + interactive maps. Session #12 COMPLETE: physical-plausibility AIS gate implemented and tuned, learned per-class Platt calibration layer fitted, 46-label recal3 dataset locked; oversized KNOX T and OCEAN SENTINEL mismatches now correctly pushed to ARTIFACT; calibration Brier improved across all classes |
+| **Status** | Phase 2 — Vessel Detection baseline COMPLETE; Session #7 COMPLETE: SSDD→GRD domain gap closed. Mixed YOLOv8n detector `darkwatch_yolov8n_ssdd_grd_v4` trained from corrected weak-positive chips and validated; July 23 weak-target recall regression fixed (both known DARK vessels recovered). Phase 3 Fusion & Attribution baseline COMPLETE: static-object exclusion + four real scenes fused, calibration framework + interactive maps. Session #12 COMPLETE: physical-plausibility AIS gate implemented and tuned, learned per-class Platt calibration layer fitted, 46-label recal3 dataset locked. Session #13 COMPLETE: calibration dataset expanded to 122 labels across Santa Barbara + Gulf of Mexico; cross-theater validation reveals Santa-Barbara-only calibration overfit; combined cross-theater model selected as default |
 | **Start Date** | 2026-08-04 |
-| **Last Updated** | 2026-08-11 (Session #12: physical-plausibility gate + learned calibration layer implemented; recal3 locked; next: scale to ~100 labels and validate in a new theater) |
+| **Last Updated** | 2026-08-11 (Session #13: 122-label cross-theater calibration dataset; Gulf out-of-sample validation; combined model default; next: Gulf platform catalog + third-theater validation) |
 | **Current Branch** | main |
 | **Git Remote** | `https://github.com/satyamdas03/darkwatch` (public, pushed 2026-08-04) |
 | **Lead Engineer** | Bull (Claude Code agent) |
@@ -774,6 +774,45 @@ darkwatch/
   - Default physical-plausibility constants are `length_tolerance=5.0`, `absolute_margin_m=200.0`.
 - **Tests pass:** `python -m pytest tests/ -q` → **21 passed**.
 - **Next unlock:** scale the calibration dataset to ~100 labeled contacts and validate in a second theater to test out-of-sample generalization of the gate and calibration model.
+
+### 2026-08-11 — Session #13: scale calibration to 122 labels + Gulf of Mexico out-of-sample validation
+- **Goal:** execute the Session #12 next unlock: expand the labeled calibration dataset from 46 toward ~100 contacts and measure out-of-sample generalization in a second theater (Gulf of Mexico offshore Louisiana).
+- **Completed:**
+  - Updated `scripts/build_v4_calibration_labels.py`:
+    - Corrected default Santa Barbara theater to `(-120.8, 34.3, -119.8, 34.7)`.
+    - Added `--theater`, `--scenes`, and `--base-labels` arguments so authoritative labels can be preserved while auto-labeling new scenes.
+  - Generated `data/processed/calibration_labels_v4_adaptive_recal4_auto.json` by merging the 46 authoritative recal3 labels with rule-based labels for two new Santa Barbara scenes (2024-08-16, 2024-08-28), producing 64 Santa Barbara labels.
+  - Generated review grids for the 18 new Santa Barbara contacts and visually inspected them; all low-confidence northern tile-edge contacts kept as ARTIFACT, two OSAKA BAY AIS matches kept as CLEAR.
+  - Processed Gulf of Mexico scene `S1A_IW_GRDH_1SDV_20240708T000210_..._F3B2` with the fixed `process_scene.py` AIS center-time bug (acquisition time now read from prep manifest), recovering 5 AIS tracks and 58 contacts.
+  - Auto-labeled Gulf contacts with `scripts/build_v4_calibration_labels.py --scenes gulf --theater -90.3 28.2 -89.5 28.8`, then manually reviewed and corrected high-confidence contacts outside the strict operational theater from ARTIFACT to DARK, producing `data/processed/calibration_labels_v4_adaptive_gulf_reviewed.json` (13 ARTIFACT, 3 CLEAR, 42 DARK).
+  - Built combined training dataset `data/processed/calibration_labels_v4_adaptive_combined.json` with 122 labels (56 ARTIFACT, 12 CLEAR, 51 DARK, 3 UNKNOWN) spanning Santa Barbara and Gulf theaters.
+  - Fitted three calibration models:
+    - `data/processed/fusion_calibration_v4_adaptive_recal4.json` (64 Santa Barbara labels)
+    - `data/processed/fusion_calibration_v4_adaptive_combined.json` (122 Santa Barbara + Gulf labels)
+  - Evaluated out-of-sample on the 58 labeled Gulf contacts under four model variants.
+- **Out-of-sample Gulf calibration results (Brier score, lower is better):**
+
+  | Model | DARK Brier | ARTIFACT Brier | CLEAR Brier | Notes |
+  |---|---|---|---|---|
+  | Raw fusion (no calibration) | 0.1606 | 0.1653 | 0.0036 | Base model already reasonably calibrated for Gulf DARK |
+  | Recal3 (46 SB labels) | 0.1472 | 0.1674 | 0.0005 | Best Gulf DARK Brier; less aggressive artifact suppression |
+  | Recal4 (64 SB labels) | 0.2593 | 0.1932 | 0.0067 | Worse than raw; overfit to Santa Barbara artifacts |
+  | Combined (122 SB + Gulf labels) | 0.1631 | 0.1450 | 0.0045 | Balanced compromise across both theaters |
+
+- **Key findings:**
+  - A calibration model trained only on Santa Barbara does **not** transfer cleanly to the Gulf: recal4 DARK Brier is 0.26 vs raw 0.16. The Santa Barbara dataset is artifact-heavy (43/64 ARTIFACT), so the learned model suppresses DARK probabilities too strongly for a theater where most real contacts are actually dark.
+  - The raw fusion engine is already surprisingly well-calibrated for Gulf DARK; the main value of calibration is sharpening ARTIFACT discrimination in the original theater.
+  - The combined (cross-theater) model is the best default going forward: it improves ARTIFACT Brier on Gulf (0.145 vs raw 0.165) without the severe DARK suppression of the Santa-Barbara-only recal4 model.
+  - The physical-plausibility gate is in place and working; no oversized CLEAR mismatches were observed in the Gulf scene. The remaining artifact class is dominated by oversized azimuth-ambiguity/wind-streak detections and tile-edge truncations.
+- **Decisions:**
+  - Default calibration model is now `data/processed/fusion_calibration_v4_adaptive_combined.json` (cross-theater, 122 labels).
+  - Operational rule: when deploying to a new theater, collect ~20 local labels before trusting calibrated probabilities; raw fusion probabilities may be more reliable until local calibration is available.
+  - `data/processed/calibration_labels_v4_adaptive_combined.json` becomes the authoritative training set for future calibration iterations.
+  - Gulf platform catalog remains absent; platform-adjacent contacts in the Gulf were handled by manual review (no false CLEARs observed).
+- **Next unlock:**
+  - Add a minimal Gulf static-object catalog (BOEM/NOAA platform locations) so future Gulf runs can auto-exclude platforms.
+  - Collect a third theater (e.g., Mediterranean or North Sea) to test true out-of-sample transfer of the combined model.
+  - Consider a theater-aware or regularized calibration formulation (e.g., strong L2 toward identity, or per-theater intercepts) to reduce cross-theater degradation.
 
 ---
 

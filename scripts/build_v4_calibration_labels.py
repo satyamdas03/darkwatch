@@ -26,7 +26,7 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from darkwatch.fusion.verdict import Verdict
 
-DEFAULT_THEATER = (-119.05, 34.55, -118.6, 34.75)  # (min_lon, min_lat, max_lon, max_lat)
+DEFAULT_THEATER = (-120.8, 34.3, -119.8, 34.7)  # (min_lon, min_lat, max_lon, max_lat)
 
 # Manual overrides keyed by contact_id.
 OVERRIDES: dict[str, tuple[str, str]] = {
@@ -66,12 +66,12 @@ def _touches_edge(pixel_bbox: list[float], image_size: tuple[float, float] = (10
     return xmin <= margin or ymin <= margin or xmax >= (w - margin) or ymax >= (h - margin)
 
 
-def _inside_theater(lon: float, lat: float) -> bool:
-    min_lon, min_lat, max_lon, max_lat = DEFAULT_THEATER
+def _inside_theater(lon: float, lat: float, theater: tuple[float, float, float, float]) -> bool:
+    min_lon, min_lat, max_lon, max_lat = theater
     return min_lon <= lon <= max_lon and min_lat <= lat <= max_lat
 
 
-def _label_contact(contact: dict, verdict: dict) -> tuple[str, str]:
+def _label_contact(contact: dict, verdict: dict, theater: tuple[float, float, float, float]) -> tuple[str, str]:
     cid = contact["contact_id"]
     if cid in OVERRIDES:
         return OVERRIDES[cid]
@@ -114,6 +114,12 @@ def _label_contact(contact: dict, verdict: dict) -> tuple[str, str]:
             "Detection bounding box touches tile edge; likely truncation artifact",
         )
 
+    if not _inside_theater(center_lon, center_lat, theater):
+        return (
+            "ARTIFACT",
+            "Contact center outside operational theater",
+        )
+
     return (
         "DARK",
         "No AIS within gate, no platform within 200 m, plausible vessel dimensions",
@@ -127,25 +133,78 @@ def main() -> int:
         type=str,
         default=str(REPO_ROOT / "data" / "processed" / "calibration_labels_v4_adaptive.json"),
     )
+    parser.add_argument(
+        "--theater",
+        type=float,
+        nargs=4,
+        metavar=("MIN_LON", "MIN_LAT", "MAX_LON", "MAX_LAT"),
+        default=DEFAULT_THEATER,
+        help="Operational theater bounding box (default: corrected Santa Barbara Channel)",
+    )
+    parser.add_argument(
+        "--scenes",
+        type=str,
+        default="santa_barbara",
+        choices=["santa_barbara", "gulf"],
+        help="Which scene group to label",
+    )
+    parser.add_argument(
+        "--base-labels",
+        type=str,
+        default=None,
+        help="Existing authoritative labels JSON; contacts present there are kept unchanged",
+    )
     args = parser.parse_args()
 
-    scenes = [
-        {
-            "name": "2024-07-11",
-            "contacts": REPO_ROOT / "data" / "processed" / "detections_20240711_v4_adaptive" / "contacts.json",
-            "verdicts": REPO_ROOT / "data" / "processed" / "fusion_20240711_v4_adaptive" / "verdicts.json",
-        },
-        {
-            "name": "2024-07-18",
-            "contacts": REPO_ROOT / "data" / "processed" / "detections_20240718_v4_adaptive" / "contacts.json",
-            "verdicts": REPO_ROOT / "data" / "processed" / "fusion_20240718_v4_adaptive" / "verdicts.json",
-        },
-        {
-            "name": "2024-07-23",
-            "contacts": REPO_ROOT / "data" / "processed" / "detections_20240723_v4_adaptive" / "contacts.json",
-            "verdicts": REPO_ROOT / "data" / "processed" / "fusion_20240723_v4_adaptive" / "verdicts.json",
-        },
-    ]
+    base_labels: dict[str, dict] = {}
+    base_scenes: list[dict] = []
+    if args.base_labels:
+        base_path = Path(args.base_labels)
+        base_data = json.loads(base_path.read_text(encoding="utf-8"))
+        base_labels = {lb["contact_id"]: lb for lb in base_data["labels"]}
+        base_scenes = base_data.get("scenes", [])
+
+    if args.scenes == "santa_barbara":
+        scenes = [
+            {
+                "name": "2024-07-11",
+                "contacts": REPO_ROOT / "data" / "processed" / "detections_20240711_v4_adaptive" / "contacts.json",
+                "verdicts": REPO_ROOT / "data" / "processed" / "fusion_20240711_v4_adaptive" / "verdicts.json",
+            },
+            {
+                "name": "2024-07-18",
+                "contacts": REPO_ROOT / "data" / "processed" / "detections_20240718_v4_adaptive" / "contacts.json",
+                "verdicts": REPO_ROOT / "data" / "processed" / "fusion_20240718_v4_adaptive" / "verdicts.json",
+            },
+            {
+                "name": "2024-07-23",
+                "contacts": REPO_ROOT / "data" / "processed" / "detections_20240723_v4_adaptive" / "contacts.json",
+                "verdicts": REPO_ROOT / "data" / "processed" / "fusion_20240723_v4_adaptive" / "verdicts.json",
+            },
+            {
+                "name": "2024-08-11",
+                "contacts": REPO_ROOT / "data" / "processed" / "detections_20240811_v4_adaptive" / "contacts.json",
+                "verdicts": REPO_ROOT / "data" / "processed" / "fusion_20240811_v4_adaptive" / "verdicts.json",
+            },
+            {
+                "name": "2024-08-16",
+                "contacts": REPO_ROOT / "data" / "processed" / "detections_20240816_v4_adaptive" / "contacts.json",
+                "verdicts": REPO_ROOT / "data" / "processed" / "fusion_20240816_v4_adaptive" / "verdicts.json",
+            },
+            {
+                "name": "2024-08-28",
+                "contacts": REPO_ROOT / "data" / "processed" / "detections_20240828_v4_adaptive" / "contacts.json",
+                "verdicts": REPO_ROOT / "data" / "processed" / "fusion_20240828_v4_adaptive" / "verdicts.json",
+            },
+        ]
+    else:
+        scenes = [
+            {
+                "name": "2024-07-08-gulf",
+                "contacts": REPO_ROOT / "data" / "processed" / "detections_20240708_v4_adaptive" / "contacts.json",
+                "verdicts": REPO_ROOT / "data" / "processed" / "fusion_20240708_v4_adaptive" / "verdicts.json",
+            },
+        ]
 
     labels: list[dict] = []
     label_counts: dict[str, int] = {}
@@ -154,11 +213,15 @@ def main() -> int:
         verdicts = {v["contact_id"]: v for v in json.loads(scene["verdicts"].read_text(encoding="utf-8"))}
         for contact in contacts:
             cid = contact["contact_id"]
+            if cid in base_labels:
+                labels.append(base_labels[cid])
+                label_counts[base_labels[cid]["label"]] = label_counts.get(base_labels[cid]["label"], 0) + 1
+                continue
             verdict = verdicts.get(cid)
             if verdict is None:
                 print(f"WARN: no verdict for {cid}", file=sys.stderr)
                 continue
-            label, note = _label_contact(contact, verdict)
+            label, note = _label_contact(contact, verdict, tuple(args.theater))
             labels.append(
                 {
                     "contact_id": cid,
@@ -168,14 +231,17 @@ def main() -> int:
             )
             label_counts[label] = label_counts.get(label, 0) + 1
 
+    # Merge scene metadata, new scenes appended after base scenes.
+    seen_scene_names = {s["name"] for s in base_scenes}
+    merged_scenes = list(base_scenes)
+    for s in scenes:
+        entry = {"name": s["name"], "verdicts": str(s["verdicts"].relative_to(REPO_ROOT)).replace("\\", "/")}
+        if s["name"] not in seen_scene_names:
+            merged_scenes.append(entry)
+            seen_scene_names.add(s["name"])
+
     output_data = {
-        "scenes": [
-            {
-                "name": s["name"],
-                "verdicts": str(s["verdicts"].relative_to(REPO_ROOT)).replace("\\", "/"),
-            }
-            for s in scenes
-        ],
+        "scenes": merged_scenes,
         "labels": labels,
     }
 

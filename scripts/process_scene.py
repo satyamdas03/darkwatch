@@ -64,6 +64,7 @@ def main() -> int:
     parser.add_argument("--adaptive-percentiles", type=str, default="1,99")
     parser.add_argument("--conf", type=float, default=0.05)
     parser.add_argument("--output-base", type=str, default="data/processed")
+    parser.add_argument("--ais-time-window-minutes", type=int, default=120, help="AIS window +/- around SAR acquisition time")
     parser.add_argument("--skip-download", action="store_true")
     parser.add_argument("--skip-prep", action="store_true")
     parser.add_argument("--skip-detect", action="store_true")
@@ -142,13 +143,17 @@ def main() -> int:
             print("[SKIP] detect")
             _record("detect", "skipped")
 
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        acquisition_time = manifest["acquisition_time"]
+
         if not args.skip_ais:
             _record("ais", "started")
             _run([
                 sys.executable, "scripts/fetch_ais.py",
                 "--date", args.date,
                 "--bbox", args.bbox,
-                "--time-window-minutes", "60",
+                "--center-time", acquisition_time,
+                "--time-window-minutes", str(args.ais_time_window_minutes),
                 "--output-dir", str(REPO_ROOT / "data" / "external" / "ais"),
             ])
             _record("ais", "completed", csv=str(ais_csv))
