@@ -70,25 +70,25 @@ flowchart LR
 
 ### 2024-07-11: the value of static-object exclusion
 
-The first detectable contact looked like a dark vessel until static-object exclusion was added. It was **58 m from Platform Irene**, so the verdict flipped to **ARTIFACT**:
+The first detectable contact looked like a dark vessel until static-object exclusion was added. It was **72 m from Platform Irene**, so the verdict flipped to **ARTIFACT**:
 
 ```json
 {
   "contact_id": "S1A_IW_GRDH_1SDV_20240711T140858_20240711T140923_054714_06A94E_9466_vh_c3314_r10814_det0000",
   "verdict": "ARTIFACT",
-  "p_artifact": 0.6576,
+  "p_artifact": 0.8929,
   "p_clear": 0.0,
-  "p_dark": 0.2568,
-  "p_review": 0.0856,
+  "p_dark": 0.0840,
+  "p_review": 0.0231,
   "static_object": {
     "name": "Platform Irene",
-    "distance_m": 58.0,
-    "confidence": 0.7678
+    "distance_m": 72.1,
+    "confidence": 0.7117
   }
 }
 ```
 
-Full report: [`notebooks/fusion_20240711_report.md`](notebooks/fusion_20240711_report.md).
+Full report: [`notebooks/fusion_20240711_v4_adaptive_recal3_report.md`](notebooks/fusion_20240711_v4_adaptive_recal3_report.md).
 
 ### 2024-07-18: the first mixed verdict set
 
@@ -101,8 +101,8 @@ A second scene produced **12 contacts** against **7 AIS tracks**:
 | **REVIEW** | 5 | Platform nearby or distant AIS, too ambiguous to call |
 | **ARTIFACT** | 1 | Platform Harvest (82 m) |
 
-Full report: [`notebooks/fusion_20240718_report.md`](notebooks/fusion_20240718_report.md).  
-Interactive map: [`notebooks/fusion_20240718_map.html`](notebooks/fusion_20240718_map.html).
+Full report: [`notebooks/fusion_20240718_v4_adaptive_recal3_report.md`](notebooks/fusion_20240718_v4_adaptive_recal3_report.md).  
+Interactive map: [`notebooks/fusion_20240718_v4_adaptive_recal3_map.html`](notebooks/fusion_20240718_v4_adaptive_recal3_map.html).
 
 ### 2024-07-23: two small dark contacts in a quiet scene
 
@@ -112,8 +112,8 @@ A third scene produced **2 small contacts** (68 × 37 m and 46 × 15 m). Both ha
 |---|---|---|
 | **DARK** | 2 | Small vessels, no AIS, no platform; nearest MMSI **BERNARDINE C** 24 km away |
 
-Full report: [`notebooks/fusion_20240723_report.md`](notebooks/fusion_20240723_report.md).  
-Interactive map: [`notebooks/fusion_20240723_map.html`](notebooks/fusion_20240723_map.html).
+Full report: [`notebooks/fusion_20240723_v4_adaptive_recal3_report.md`](notebooks/fusion_20240723_v4_adaptive_recal3_report.md).  
+Interactive map: [`notebooks/fusion_20240723_v4_adaptive_recal3_map.html`](notebooks/fusion_20240723_v4_adaptive_recal3_map.html).
 
 > **Detector update (Session #7):** the mixed SSDD+GRD detector initially missed these small, low-backscatter targets. After fixing a stale-label augmentation bug and retraining `darkwatch_yolov8n_ssdd_grd_v4`, the model now recovers **both July 23 DARK vessels** — at confidences **0.764** and **0.370** with adaptive dB stretch. The SSDD→GRD domain gap is closed.
 
@@ -136,6 +136,25 @@ After applying the physical-plausibility gate, both are now classified **ARTIFAC
 
 Full report: [`notebooks/fusion_20240811_v4_adaptive_recal3_report.md`](notebooks/fusion_20240811_v4_adaptive_recal3_report.md).  
 Interactive map: [`notebooks/fusion_20240811_v4_adaptive_recal3_map.html`](notebooks/fusion_20240811_v4_adaptive_recal3_map.html).
+
+### 2024-08-16 & 2024-08-28: scaling the Santa Barbara dataset
+
+Two additional ascending nighttime passes over the western Santa Barbara Channel were added to expand the calibration set. The August 28 scene contained two strong AIS matches to **OSAKA BAY** (CLEAR) and several low-confidence northern tile-edge artifacts.
+
+| Scene | Contacts | CLEAR | DARK | ARTIFACT |
+|---|---|---|---|---|
+| 2024-08-16 | 6 | 0 | 0 | 6 |
+| 2024-08-28 | 12 | 2 | 0 | 10 |
+
+Reports: [`fusion_20240816_report.md`](notebooks/fusion_20240816_report.md) · [`fusion_20240828_report.md`](notebooks/fusion_20240828_report.md)  
+Maps: [`fusion_20240816_map.html`](notebooks/fusion_20240816_map.html) · [`fusion_20240828_map.html`](notebooks/fusion_20240828_map.html)
+
+### 2024-07-08: Gulf of Mexico out-of-sample validation
+
+A descending pass offshore Louisiana (`-90.3,28.2,-89.5,28.8`) was processed end-to-end to test generalization. After fixing the AIS center-time bug, the pipeline recovered **5 AIS tracks** and **58 contacts**. Manual review produced **42 DARK**, **3 CLEAR**, and **13 ARTIFACT** labels. This scene is held out of the combined training set only in evaluation; it is included in `calibration_labels_v4_adaptive_combined.json` for the cross-theater default model.
+
+Report: [`fusion_20240708_report.md`](notebooks/fusion_20240708_report.md)  
+Map: [`fusion_20240708_map.html`](notebooks/fusion_20240708_map.html)
 
 ---
 
@@ -164,22 +183,22 @@ python scripts/prep_s1.py "data/raw/s1/S1A_...SAFE" \
   --bbox "-120.8,34.3,-119.8,34.7" \
   --pol vv,vh
 
-# 4. Detect vessels (dB -> uint8 contrast stretch is required for YOLO inference)
+# 4. Detect vessels (adaptive per-tile stretch is now the default for v4)
+python scripts/detect_tiles.py \
+  --manifest data/processed/s1a_20240711_channel/manifest.json \
+  --model models/detector_runs/darkwatch_yolov8n_ssdd_grd_v4/weights/best.pt \
+  --adaptive-percentiles 1,99 \
+  --conf 0.05 \
+  --pol vv,vh \
+  --output-dir data/processed/detections_20240711_v4_adaptive
+
+# Or use a fixed dB range for bright, high-contrast scenes:
 python scripts/detect_tiles.py \
   --manifest data/processed/s1a_20240711_channel/manifest.json \
   --model models/detector_runs/darkwatch_yolov8n_ssdd_grd_v4/weights/best.pt \
   --db-lo -25 --db-hi -5 \
   --pol vv,vh \
-  --output-dir data/processed/detections_20240711
-
-# For faint / low-backscatter targets, use adaptive per-tile stretch:
-python scripts/detect_tiles.py \
-  --manifest data/processed/s1a_20240723_channel/manifest.json \
-  --model models/detector_runs/darkwatch_yolov8n_ssdd_grd_v4/weights/best.pt \
-  --adaptive-percentiles 5,95 \
-  --db-lo -40 --db-hi -10 --conf 0.05 \
-  --pol vv,vh \
-  --output-dir data/processed/detections_20240723_adaptive
+  --output-dir data/processed/detections_20240711_v4_default
 
 # 5. Fetch NOAA Marine Cadastre AIS for the acquisition date
 python scripts/fetch_ais.py --date 2024-07-11 \
@@ -187,29 +206,29 @@ python scripts/fetch_ais.py --date 2024-07-11 \
   --center-time "2024-07-11T14:09:10Z" \
   --time-window-minutes 60
 
-# 6. Fuse SAR contacts with AIS tracks (optionally apply a saved calibration model)
+# 6. Fuse SAR contacts with AIS tracks (optionally apply the default calibration model)
 python scripts/fuse_contacts.py \
-  --contacts data/processed/detections_20240711/contacts.json \
+  --contacts data/processed/detections_20240711_v4_adaptive/contacts.json \
   --ais data/external/ais/ais_2024-07-11_clipped.csv \
-  --output-dir data/processed/fusion_20240711
+  --output-dir data/processed/fusion_20240711_v4_adaptive
 
-# 6b. Apply the recal3 calibration model to the output probabilities
+# 6b. Apply the combined cross-theater calibration model
 python scripts/fuse_contacts.py \
-  --contacts data/processed/detections_20240711/contacts.json \
+  --contacts data/processed/detections_20240711_v4_adaptive/contacts.json \
   --ais data/external/ais/ais_2024-07-11_clipped.csv \
-  --output-dir data/processed/fusion_20240711_recal3 \
-  --calibration-model data/processed/fusion_calibration_v4_adaptive_recal3.json
+  --output-dir data/processed/fusion_20240711_v4_adaptive_calibrated \
+  --calibration-model data/processed/fusion_calibration_v4_adaptive_combined.json
 
 # 7. Generate the human-readable Markdown report
 python scripts/fusion_report.py \
-  --contacts data/processed/detections_20240711/contacts.json \
+  --contacts data/processed/detections_20240711_v4_adaptive/contacts.json \
   --ais data/external/ais/ais_2024-07-11_clipped.csv \
-  --verdicts data/processed/fusion_20240711/verdicts.json \
-  --summary data/processed/fusion_20240711/summary.json \
-  --output notebooks/fusion_20240711_report.md
+  --verdicts data/processed/fusion_20240711_v4_adaptive/verdicts.json \
+  --summary data/processed/fusion_20240711_v4_adaptive/summary.json \
+  --output notebooks/fusion_20240711_v4_adaptive_report.md
 ```
 
-> **Note:** Copernicus Data Space credentials go in `.env` (see `scripts/fetch_first_scene.py`). All downloaded scenes, models, and data are excluded from git via `.gitignore`.
+> **Note:** Copernicus Data Space credentials go in `.env` (see `scripts/fetch_first_scene.py`). All downloaded scenes, models, and data are excluded from git via `.gitignore`. For a new theater, collect ~20 local labels and run `scripts/fit_calibration.py` before trusting calibrated probabilities.
 >
 > **Scene selection tip:** use `--operational-bbox` so you don't pick a scene that is 100% ocean but misses your theater:
 > ```bash
@@ -255,10 +274,10 @@ Generate a fusion map:
 
 ```bash
 python scripts/visualize_fusion.py \
-  --contacts data/processed/detections_20240718/contacts.json \
+  --contacts data/processed/detections_20240718_v4_adaptive/contacts.json \
   --ais data/external/ais/ais_2024-07-18_clipped.csv \
-  --verdicts data/processed/fusion_20240718/verdicts.json \
-  --output notebooks/fusion_20240718_map.html
+  --verdicts data/processed/fusion_20240718_v4_adaptive/verdicts.json \
+  --output notebooks/fusion_20240718_v4_adaptive_map.html
 ```
 
 ### Cross-theater validation lesson
@@ -322,18 +341,14 @@ darkwatch/
 | 0 | Recon & first real SAR on screen | ✅ |
 | 1 | Automated SAR ingestion & prep | ✅ |
 | 2 | Vessel detection baseline | ✅ Baseline trained; ✅ SSDD→GRD domain-gap closure complete (`darkwatch_yolov8n_ssdd_grd_v4`) |
-| 3 | **Fusion & Attribution** | ✅ Baseline complete: static-object exclusion, physical-plausibility AIS gate, learned per-class Platt calibration, four real scenes, 46 labeled contacts, calibration framework, interactive maps; next: scale to ~100 labels and validate in a new theater |
+| 3 | **Fusion & Attribution** | ✅ Complete: static-object exclusion, physical-plausibility AIS gate, learned per-class Platt calibration, 122 labeled contacts across Santa Barbara + Gulf of Mexico, cross-theater validation, calibration framework, interactive maps |
 | 4 | Behavior & intent (zones, persistence, rendezvous) | ⏳ |
 | 5 | Alert & evidence dossiers | ⏳ |
 
 **Next priorities:**
-1. **Scale the calibration dataset to ~100 labeled contacts** (highest impact for the core goal):
-   - Target busy traffic for more **CLEAR** labels and quiet open-water passes for more unambiguous **DARK** labels.
-   - Use `scripts/process_scene.py` to automate the download → prep → detect → fuse → label pipeline.
-2. **Validate out-of-sample in a second theater**:
-   - The current gate and calibration model are fitted on the Santa Barbara Channel.
-   - Run a fresh scene (e.g., Gulf of Mexico, Chesapeake Bay, or Southern California Bight) and measure Brier degradation to guide generalization improvements.
-3. **Adaptive-stretch production path:** decide when to use default vs adaptive dB stretch based on scene statistics, and expose the choice cleanly in the CLI/API.
+1. **Gulf static-object catalog:** add BOEM/NOAA platform locations for offshore Louisiana so future Gulf runs auto-exclude rigs instead of relying on manual review.
+2. **Third-theater validation:** collect and label a scene in the Mediterranean, North Sea, or Southern California Bight to test true out-of-sample transfer of the combined calibration model.
+3. **Theater-aware calibration:** explore per-theater intercepts or stronger L2 regularization toward identity so a Santa-Barbara-heavy model does not suppress DARK probabilities in artifact-sparse theaters.
 4. **Begin Phase 4 behavior context:** integrate public MPA / EEZ / fishing-zone overlays and start persistence tracking across repeat passes.
 
 ---

@@ -39,10 +39,19 @@ models/
 yolov8n.pt
 yolo26n.pt
 *.pt
+.claude/
+
 # Debug outputs
 land_debug.png
 notebooks/temp_*.png
 notebooks/tile_*.png
+notebooks/chip_*.png
+notebooks/grd_*.png
+notebooks/aug_label_check*/
+# Older review outputs are kept locally; newer scene review dirs are excepted below
+notebooks/contact_viz_20240711_v4_adaptive/
+notebooks/contact_viz_20240718_v4_adaptive/
+notebooks/contact_viz_20240723_v4_adaptive/
 # Exception: calibration reports + plots are the auditable output of a session
 !notebooks/calibration_v4_adaptive_recal/
 !notebooks/calibration_v4_adaptive_recal2/
