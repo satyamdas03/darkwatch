@@ -19,6 +19,7 @@ from darkwatch.fusion import (
     check_contact,
     load_ais_csv,
 )
+from darkwatch.fusion.static_objects import StaticObject
 
 
 def _make_ais_csv(rows: list[dict]) -> Path:
@@ -265,6 +266,36 @@ def test_strong_ais_match_discounts_static_artifact_penalty():
     verdict = associate_contact(contact, [track], check_static_objects=True)
     assert verdict.verdict == Verdict.CLEAR
     assert verdict.p_clear > verdict.p_artifact
+
+
+def test_static_object_detection_flags_gulf_platform():
+    """A synthetic contact on a known Gulf platform must be flagged as a static hit."""
+    # Coordinates from the BOEM Gulf cache (BOEM Platform 21451 fallback).
+    contact = _contact_at(-89.738600, 28.767000, confidence=0.82)
+    from darkwatch.fusion.static_objects import default_static_objects
+
+    gulf_objects = default_static_objects("gulf")
+    hit = check_contact(contact, objects=gulf_objects)
+    assert hit.hit
+    assert hit.object is not None
+    assert "BOEM" in hit.object.name
+    assert hit.distance_m < 100.0
+    assert hit.confidence > 0.5
+
+
+def test_gulf_static_object_shifts_verdict_to_artifact():
+    """A contact on a Gulf platform with no AIS match should be classified ARTIFACT."""
+    from darkwatch.fusion.static_objects import default_static_objects
+
+    contact = _contact_at(-89.738600, 28.767000, confidence=0.82)
+    verdict = associate_contact(
+        contact, [], static_objects=default_static_objects("gulf")
+    )
+    assert verdict.verdict == Verdict.ARTIFACT
+    assert verdict.p_artifact > 0.5
+    assert verdict.static_object_hit is not None
+    assert verdict.static_object_hit.hit
+    assert any("BOEM" in r for r in verdict.reasoning)
 
 
 def test_plausible_ais_match_stays_clear():

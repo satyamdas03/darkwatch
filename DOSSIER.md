@@ -14,9 +14,9 @@
 | **Tagline** | A radar contact with no transponder is either noise, a rig, a mismatch — or a ship that chose to disappear. Darkwatch decides which, and says how sure it is. |
 | **Goal** | Build a maritime surveillance system that detects vessels that have deliberately switched off AIS, by fusing free Sentinel-1 SAR imagery with AIS broadcasts, and produces calibrated, auditable dark-vessel verdicts. |
 | **Mode** | Impact-first, funding-agnostic, single-consumer-GPU research/engineering build. |
-| **Status** | Phase 2 — Vessel Detection baseline COMPLETE; Session #7 COMPLETE: SSDD→GRD domain gap closed. Mixed YOLOv8n detector `darkwatch_yolov8n_ssdd_grd_v4` trained from corrected weak-positive chips and validated; July 23 weak-target recall regression fixed (both known DARK vessels recovered). Phase 3 Fusion & Attribution baseline COMPLETE: static-object exclusion + four real scenes fused, calibration framework + interactive maps. Session #12 COMPLETE: physical-plausibility AIS gate implemented and tuned, learned per-class Platt calibration layer fitted, 46-label recal3 dataset locked. Session #13 COMPLETE: calibration dataset expanded to 122 labels across Santa Barbara + Gulf of Mexico; cross-theater validation reveals Santa-Barbara-only calibration overfit; combined cross-theater model selected as default |
+| **Status** | Phase 2 — Vessel Detection baseline COMPLETE; Session #7 COMPLETE: SSDD→GRD domain gap closed. Mixed YOLOv8n detector `darkwatch_yolov8n_ssdd_grd_v4` trained from corrected weak-positive chips and validated; July 23 weak-target recall regression fixed (both known DARK vessels recovered). Phase 3 Fusion & Attribution baseline COMPLETE: static-object exclusion + four real scenes fused, calibration framework + interactive maps. Session #12 COMPLETE: physical-plausibility AIS gate implemented and tuned, learned per-class Platt calibration layer fitted, 46-label recal3 dataset locked. Session #13 COMPLETE: calibration dataset expanded to 122 labels across Santa Barbara + Gulf of Mexico; cross-theater validation reveals Santa-Barbara-only calibration overfit; combined cross-theater model selected as default. Session #13.5 COMPLETE: BOEM/BSEE Gulf of Mexico platform catalog integrated into static-object exclusion; `--theater` flag added to fusion CLI |
 | **Start Date** | 2026-08-04 |
-| **Last Updated** | 2026-08-11 (Session #13: 122-label cross-theater calibration dataset; Gulf out-of-sample validation; combined model default; next: Gulf platform catalog + third-theater validation) |
+| **Last Updated** | 2026-08-11 (Session #13: 122-label cross-theater calibration dataset; Session #13.5: Gulf static-object catalog added; next: third-theater validation) |
 | **Current Branch** | main |
 | **Git Remote** | `https://github.com/satyamdas03/darkwatch` (public, pushed 2026-08-04) |
 | **Lead Engineer** | Bull (Claude Code agent) |
@@ -812,6 +812,32 @@ darkwatch/
 - **Next unlock:**
   - Add a minimal Gulf static-object catalog (BOEM/NOAA platform locations) so future Gulf runs can auto-exclude platforms.
   - Collect a third theater (e.g., Mediterranean or North Sea) to test true out-of-sample transfer of the combined model.
+  - Consider a theater-aware or regularized calibration formulation (e.g., strong L2 toward identity, or per-theater intercepts) to reduce cross-theater degradation.
+
+### 2026-08-11 — Session #13.5: add Gulf of Mexico static-object catalog
+- **Goal:** close the last manual-review gap in the Gulf theater by adding BOEM/BSEE platform locations to `darkwatch/fusion/static_objects.py`.
+- **Completed:**
+  - Extended `darkwatch/fusion/static_objects.py`:
+    - Added `_platforms_gulf_of_mexico()` that reads from a cached BOEM GeoJSON or a small hard-coded fallback.
+    - Made `default_static_objects()` theater-aware (`santa_barbara`, `santa_barbara_channel`, `gulf`, `gulf_of_mexico`).
+  - Added `scripts/fetch_boem_gulf_platforms.py` to refresh the cache from the BOEM/BSEE ArcGIS REST service.
+  - Fetched `data/external/boem_gulf_platforms.geojson` (1,316 platforms, 30 inside the `-90.3,28.2,-89.5,28.8` theater bbox).
+  - Wired `--theater` through `scripts/fuse_contacts.py` and `scripts/process_scene.py`.
+  - Added `static_objects` argument to `associate_contact()` / `associate_all_contacts()` so callers can override the catalog.
+  - Added Gulf static-object unit tests in `tests/test_fusion.py`.
+  - Regenerated `notebooks/fusion_20240708_report.md` and `notebooks/fusion_20240708_map.html` using `--theater gulf`.
+- **Validation:**
+  - `pytest tests/ -q` → **23 passed**.
+  - Re-ran Gulf 2024-07-08 scene with `--theater gulf`:
+    - Raw fusion verdicts unchanged (`{'CLEAR': 3, 'DARK': 54, 'ARTIFACT': 1}`) because none of the 58 contacts lie within 250 m of the 30 platforms in the operational bbox.
+    - This confirms the manual Gulf ARTIFACT labels were oversized azimuth-ambiguity / wind-streak artifacts, not platform-adjacent contacts.
+    - The pipeline is now ready to auto-exclude platforms in future Gulf scenes without manual review.
+- **Decisions:**
+  - `data/external/boem_gulf_platforms.geojson` is gitignored (regenerated by `scripts/fetch_boem_gulf_platforms.py`).
+  - Canonical Gulf fusion output remains raw (uncalibrated) because the scene is the out-of-sample calibration evaluation baseline.
+  - Default theater for `fuse_contacts.py` / `process_scene.py` stays Santa Barbara when `--theater` is omitted, preserving backward compatibility.
+- **Next unlock:**
+  - Collect a third theater (e.g., Mediterranean or North Sea) to test true out-of-sample transfer of the combined calibration model.
   - Consider a theater-aware or regularized calibration formulation (e.g., strong L2 toward identity, or per-theater intercepts) to reduce cross-theater degradation.
 
 ---

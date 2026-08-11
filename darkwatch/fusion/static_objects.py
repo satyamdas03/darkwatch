@@ -2,12 +2,14 @@
 
 A SAR contact with no AIS match is still not a dark vessel if it sits on a
 known fixed object (oil platform, rig, small island/rock, navigation marker).
-This module holds authoritative point/polygon datasets for the Santa Barbara
-Channel theater and computes a static-object proximity score that the
-fusion layer can use to shift probability from DARK to ARTIFACT.
+This module holds authoritative point/polygon datasets for multiple theaters
+and computes a static-object proximity score that the fusion layer can use to
+shift probability from DARK to ARTIFACT.
 
 Data sources are all public domain / US government:
-- Oil platforms: California OSPR ds357 via ArcGIS REST service.
+- Santa Barbara Channel oil platforms: California OSPR ds357 via ArcGIS REST service.
+- Gulf of Mexico oil platforms: BOEM/BSEE GOA_Layers / OCS Drilling Platforms via
+  ArcGIS REST service.
 - Islands/rocks: Natural Earth 10m coastline / OpenStreetMap (future).
 """
 
@@ -26,6 +28,9 @@ from ..detect.contact import Contact
 
 # Radius within which a contact is considered to sit on a static object.
 DEFAULT_PLATFORM_BUFFER_M = 250.0
+
+# Cache path for the BOEM Gulf of Mexico platform GeoJSON.
+DEFAULT_BOEM_GULF_CACHE = Path(__file__).resolve().parents[3] / "data" / "external" / "boem_gulf_platforms.geojson"
 
 
 @dataclass(frozen=True)
@@ -95,9 +100,74 @@ def _platforms_santa_barbara_channel() -> list[StaticObject]:
     ]
 
 
-def default_static_objects() -> list[StaticObject]:
-    """Return the default static-object catalog for the current theater."""
-    return _platforms_santa_barbara_channel()
+def _platforms_gulf_of_mexico(cache_path: Path | str | None = None) -> list[StaticObject]:
+    """Return oil platforms in the Gulf of Mexico from the BOEM/BSEE dataset.
+
+    Reads from a cached GeoJSON file if available; falls back to a minimal
+    hard-coded subset if the cache is missing. The canonical cache can be
+    generated with ``scripts/fetch_boem_gulf_platforms.py``.
+
+    Data source: BOEM/BSEE GOA_Layers / OCS Drilling Platforms (public domain).
+    Spatial reference: NAD83 (EPSG:4269), which is WGS84-compatible to well
+    within the buffer used here.
+    """
+    path = Path(cache_path) if cache_path is not None else DEFAULT_BOEM_GULF_CACHE
+    if path.exists():
+        data = json.loads(path.read_text(encoding="utf-8"))
+        objects: list[StaticObject] = []
+        for feature in data.get("features", []):
+            geom = feature.get("geometry")
+            props = feature.get("properties", {})
+            if not geom or geom.get("type") != "Point":
+                continue
+            lon, lat = geom["coordinates"][:2]
+            complex_id = props.get("COMPLEX_ID_NUM", "unknown")
+            objects.append(
+                StaticObject(
+                    name=f"BOEM Platform {complex_id}",
+                    lon=float(lon),
+                    lat=float(lat),
+                    category="oil_platform",
+                    source="BOEM GOA_Layers OCS Drilling Platforms",
+                )
+            )
+        if objects:
+            return objects
+
+    # Fallback minimal set if the cache is missing or empty.
+    return [
+        StaticObject("BOEM Platform 21451", -89.738600, 28.767000, "oil_platform", "BOEM GOA_Layers"),
+        StaticObject("BOEM Platform 21461", -89.723400, 28.774000, "oil_platform", "BOEM GOA_Layers"),
+        StaticObject("BOEM Platform 21471", -89.681200, 28.767000, "oil_platform", "BOEM GOA_Layers"),
+        StaticObject("BOEM Platform 21501", -89.628100, 28.767000, "oil_platform", "BOEM GOA_Layers"),
+        StaticObject("BOEM Platform 21521", -89.573900, 28.757000, "oil_platform", "BOEM GOA_Layers"),
+    ]
+
+
+THEATERS = {
+    "santa_barbara": _platforms_santa_barbara_channel,
+    "santa_barbara_channel": _platforms_santa_barbara_channel,
+    "gulf": _platforms_gulf_of_mexico,
+    "gulf_of_mexico": _platforms_gulf_of_mexico,
+}
+
+
+def default_static_objects(theater: str | None = None) -> list[StaticObject]:
+    """Return the default static-object catalog for the requested theater.
+
+    Args:
+        theater: Theater name. Supported values: ``santa_barbara``,
+            ``santa_barbara_channel``, ``gulf``, ``gulf_of_mexico``. If
+            ``None`` or unrecognized, defaults to Santa Barbara for backward
+            compatibility.
+    """
+    if theater is None:
+        return _platforms_santa_barbara_channel()
+    key = theater.lower().replace(" ", "_")
+    loader = THEATERS.get(key)
+    if loader is None:
+        return _platforms_santa_barbara_channel()
+    return loader()
 
 
 @dataclass

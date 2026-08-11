@@ -243,6 +243,7 @@ def associate_contact(
     gate_radius_m: float = DEFAULT_GATE_RADIUS_M,
     max_extrapolate_s: float = 600.0,
     check_static_objects: bool = True,
+    static_objects: Iterable[StaticObject] | None = None,
     artifact_prior: float = DEFAULT_ARTIFACT_PRIOR,
     static_buffer_m: float = DEFAULT_PLATFORM_BUFFER_M,
     static_confidence_scale: float = DEFAULT_STATIC_CONFIDENCE_SCALE,
@@ -271,6 +272,9 @@ def associate_contact(
         gate_radius_m: maximum distance for an AIS track to explain the contact.
         max_extrapolate_s: maximum seconds to extrapolate an AIS track to t_sar.
         check_static_objects: whether to check known fixed objects.
+        static_objects: optional iterable of ``StaticObject`` to use instead of
+            the default Santa Barbara catalog. If ``None`` and
+            ``check_static_objects`` is True, the default catalog is used.
         artifact_prior: base prior that a contact is a non-vessel artifact.
         static_buffer_m: radius for static-object hits.
         static_confidence_scale: multiplier for raw static-object confidence.
@@ -406,7 +410,7 @@ def associate_contact(
     # Static-object exclusion: if the contact sits on a known fixed object
     # (oil platform, rig, small island), shift real-vessel mass to artifact.
     static_hit = (
-        check_contact(contact, buffer_m=static_buffer_m)
+        check_contact(contact, objects=static_objects, buffer_m=static_buffer_m)
         if check_static_objects
         else StaticObjectHit(False, None, float("inf"), 0.0)
     )
@@ -549,6 +553,7 @@ def associate_all_contacts(
     gate_radius_m: float = DEFAULT_GATE_RADIUS_M,
     max_extrapolate_s: float = 600.0,
     check_static_objects: bool = True,
+    static_objects: Iterable[StaticObject] | None = None,
     artifact_prior: float = DEFAULT_ARTIFACT_PRIOR,
     static_buffer_m: float = DEFAULT_PLATFORM_BUFFER_M,
     static_confidence_scale: float = DEFAULT_STATIC_CONFIDENCE_SCALE,
@@ -577,6 +582,7 @@ def associate_all_contacts(
             gate_radius_m,
             max_extrapolate_s,
             check_static_objects,
+            static_objects,
             artifact_prior,
             static_buffer_m,
             static_confidence_scale,

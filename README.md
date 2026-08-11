@@ -153,6 +153,8 @@ Maps: [`fusion_20240816_map.html`](notebooks/fusion_20240816_map.html) · [`fusi
 
 A descending pass offshore Louisiana (`-90.3,28.2,-89.5,28.8`) was processed end-to-end to test generalization. After fixing the AIS center-time bug, the pipeline recovered **5 AIS tracks** and **58 contacts**. Manual review produced **42 DARK**, **3 CLEAR**, and **13 ARTIFACT** labels. This scene is held out of the combined training set only in evaluation; it is included in `calibration_labels_v4_adaptive_combined.json` for the cross-theater default model.
 
+The Gulf static-object catalog (BOEM/BSEE platforms) was added in Session #13.5 and is now applied via `--theater gulf`. For this specific pass no contact fell within 250 m of the 30 platforms inside the bbox, confirming the manual ARTIFACT labels were oversized azimuth-ambiguity / wind-streak artifacts rather than platform contacts.
+
 Report: [`fusion_20240708_report.md`](notebooks/fusion_20240708_report.md)  
 Map: [`fusion_20240708_map.html`](notebooks/fusion_20240708_map.html)
 
@@ -217,7 +219,11 @@ python scripts/fuse_contacts.py \
   --contacts data/processed/detections_20240711_v4_adaptive/contacts.json \
   --ais data/external/ais/ais_2024-07-11_clipped.csv \
   --output-dir data/processed/fusion_20240711_v4_adaptive_calibrated \
+  --theater santa_barbara \
   --calibration-model data/processed/fusion_calibration_v4_adaptive_combined.json
+
+# For a Gulf of Mexico scene, pass --theater gulf to use the BOEM platform catalog:
+# python scripts/fuse_contacts.py ... --theater gulf
 
 # 7. Generate the human-readable Markdown report
 python scripts/fusion_report.py \
@@ -346,10 +352,9 @@ darkwatch/
 | 5 | Alert & evidence dossiers | ⏳ |
 
 **Next priorities:**
-1. **Gulf static-object catalog:** add BOEM/NOAA platform locations for offshore Louisiana so future Gulf runs auto-exclude rigs instead of relying on manual review.
-2. **Third-theater validation:** collect and label a scene in the Mediterranean, North Sea, or Southern California Bight to test true out-of-sample transfer of the combined calibration model.
-3. **Theater-aware calibration:** explore per-theater intercepts or stronger L2 regularization toward identity so a Santa-Barbara-heavy model does not suppress DARK probabilities in artifact-sparse theaters.
-4. **Begin Phase 4 behavior context:** integrate public MPA / EEZ / fishing-zone overlays and start persistence tracking across repeat passes.
+1. **Third-theater validation:** collect and label a scene in the Mediterranean, North Sea, or Southern California Bight to test true out-of-sample transfer of the combined calibration model.
+2. **Theater-aware calibration:** explore per-theater intercepts or stronger L2 regularization toward identity so a Santa-Barbara-heavy model does not suppress DARK probabilities in artifact-sparse theaters.
+3. **Begin Phase 4 behavior context:** integrate public MPA / EEZ / fishing-zone overlays and start persistence tracking across repeat passes.
 
 ---
 

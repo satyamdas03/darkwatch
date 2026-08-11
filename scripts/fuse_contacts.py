@@ -25,6 +25,7 @@ from darkwatch.fusion.associate import (
     DEFAULT_PLAUSIBILITY_LENGTH_TOLERANCE,
 )
 from darkwatch.fusion.calibration import CalibrationModel
+from darkwatch.fusion.static_objects import default_static_objects
 
 
 def _parse_bbox(value: str) -> tuple[float, float, float, float]:
@@ -76,6 +77,7 @@ def main() -> int:
     parser.add_argument("--plausibility-length-tolerance", type=float, default=DEFAULT_PLAUSIBILITY_LENGTH_TOLERANCE, help="Multiplier on AIS vessel length allowed for SAR contact max dimension")
     parser.add_argument("--plausibility-absolute-margin-m", type=float, default=DEFAULT_PLAUSIBILITY_ABSOLUTE_MARGIN_M, help="Absolute margin (m) added to allowed SAR contact size")
     parser.add_argument("--calibration-model", type=str, default=None, help="Optional JSON calibration model to apply to raw probabilities")
+    parser.add_argument("--theater", type=str, default=None, choices=["santa_barbara", "gulf"], help="Static-object catalog theater (santa_barbara or gulf)")
     args = parser.parse_args()
 
     contacts_path = Path(args.contacts)
@@ -104,12 +106,18 @@ def main() -> int:
     tracks = load_ais_csv(ais_path, bbox=bbox, time_window=time_window, min_messages=2)
     print(f"Loaded {len(tracks)} AIS tracks")
 
+    static_objects = None
+    if args.theater:
+        static_objects = default_static_objects(args.theater)
+        print(f"Loaded static-object catalog for theater: {args.theater}")
+
     print(f"Fusing {len(contacts)} contacts ...")
     verdicts = associate_all_contacts(
         contacts,
         tracks,
         t_sar=t_sar,
         gate_radius_m=args.gate_m,
+        static_objects=static_objects,
         static_confidence_scale=args.static_confidence_scale,
         static_confidence_floor=args.static_confidence_floor,
         size_max_dim_soft_m=args.size_max_dim_soft_m,
