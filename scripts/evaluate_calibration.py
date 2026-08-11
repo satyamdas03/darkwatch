@@ -24,6 +24,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
 from darkwatch.fusion.verdict import Verdict
+from darkwatch.fusion.calibration import CalibrationModel
 
 
 def _load_labels(path: Path) -> dict[str, str]:
@@ -249,6 +250,7 @@ def main() -> int:
     parser.add_argument("--labels", type=str, default=str(REPO_ROOT / "data" / "processed" / "calibration_labels.json"))
     parser.add_argument("--output-dir", type=str, default=str(REPO_ROOT / "notebooks" / "calibration"))
     parser.add_argument("--bins", type=int, default=5, help="Number of reliability bins")
+    parser.add_argument("--calibration-model", type=str, default=None, help="Optional JSON calibration model to apply before evaluation")
     args = parser.parse_args()
 
     labels_path = Path(args.labels)
@@ -272,6 +274,10 @@ def main() -> int:
     if not data["records"]:
         print("ERROR: no labeled contacts matched any verdicts", file=sys.stderr)
         return 1
+
+    if args.calibration_model:
+        model = CalibrationModel.load(args.calibration_model)
+        data["records"] = model.transform_records(data["records"])
 
     from datetime import datetime, timezone
 

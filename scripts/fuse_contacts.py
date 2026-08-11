@@ -20,6 +20,11 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from darkwatch.detect.contact import Contact
 from darkwatch.fusion import associate_all_contacts, load_ais_csv
+from darkwatch.fusion.associate import (
+    DEFAULT_PLAUSIBILITY_ABSOLUTE_MARGIN_M,
+    DEFAULT_PLAUSIBILITY_LENGTH_TOLERANCE,
+)
+from darkwatch.fusion.calibration import CalibrationModel
 
 
 def _parse_bbox(value: str) -> tuple[float, float, float, float]:
@@ -67,6 +72,10 @@ def main() -> int:
     parser.add_argument("--size-tile-edge-min-tile-ratio", type=float, default=0.0, help="Minimum contact max-dim / min-tile-dim ratio for tile-edge penalty (0 disables)")
     parser.add_argument("--artifact-conf-ais-discount-power", type=float, default=1.0, help="Power for (1 - p_matched_given_real) artifact discount for strong AIS matches")
     parser.add_argument("--dark-artifact-coupling", type=float, default=0.6, help="How strongly artifact evidence competes with dark-vessel residual")
+    parser.add_argument("--disable-physical-plausibility", action="store_true", help="Disable the AIS size-compatibility gate")
+    parser.add_argument("--plausibility-length-tolerance", type=float, default=DEFAULT_PLAUSIBILITY_LENGTH_TOLERANCE, help="Multiplier on AIS vessel length allowed for SAR contact max dimension")
+    parser.add_argument("--plausibility-absolute-margin-m", type=float, default=DEFAULT_PLAUSIBILITY_ABSOLUTE_MARGIN_M, help="Absolute margin (m) added to allowed SAR contact size")
+    parser.add_argument("--calibration-model", type=str, default=None, help="Optional JSON calibration model to apply to raw probabilities")
     args = parser.parse_args()
 
     contacts_path = Path(args.contacts)
@@ -109,7 +118,15 @@ def main() -> int:
         size_tile_edge_min_tile_ratio=args.size_tile_edge_min_tile_ratio,
         artifact_conf_ais_discount_power=args.artifact_conf_ais_discount_power,
         dark_artifact_coupling=args.dark_artifact_coupling,
+        enable_physical_plausibility=not args.disable_physical_plausibility,
+        plausibility_length_tolerance=args.plausibility_length_tolerance,
+        plausibility_absolute_margin_m=args.plausibility_absolute_margin_m,
     )
+
+    calibration_model = None
+    if args.calibration_model:
+        calibration_model = CalibrationModel.load(args.calibration_model)
+        print(f"Loaded calibration model from {args.calibration_model}")
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -155,20 +172,51 @@ def main() -> int:
             }
         )
 
+    if calibration_model is not None:
+        from darkwatch.fusion.verdict import Verdict
+
+        for r in results:
+            cal = calibration_model.transform(
+                r["p_artifact"], r["p_clear"], r["p_dark"], r["p_review"]
+            )
+            r["p_artifact"] = round(cal["p_artifact"], 4)
+            r["p_clear"] = round(cal["p_clear"], 4)
+            r["p_dark"] = round(cal["p_dark"], 4)
+            r["p_review"] = round(cal["p_review"], 4)
+            if cal["p_artifact"] > 0.5:
+                r["verdict"] = Verdict.ARTIFACT.value
+            elif cal["p_clear"] > 0.6:
+                r["verdict"] = Verdict.CLEAR.value
+            elif cal["p_dark"] > 0.6:
+                r["verdict"] = Verdict.DARK.value
+            else:
+                r["verdict"] = Verdict.REVIEW.value
+
     output_path = output_dir / "verdicts.json"
     output_path.write_text(json.dumps(results, indent=2))
     print(f"Verdicts saved to {output_path}")
 
     # Summary
     counts: dict[str, int] = {}
-    for v in verdicts:
-        counts[v.verdict.value] = counts.get(v.verdict.value, 0) + 1
+    for r in results:
+        counts[r["verdict"]] = counts.get(r["verdict"], 0) + 1
+    calibration_model_rel = None
+    if args.calibration_model:
+        model_path = Path(args.calibration_model)
+        if not model_path.is_absolute():
+            model_path = REPO_ROOT / model_path
+        try:
+            calibration_model_rel = str(model_path.relative_to(REPO_ROOT)).replace("\\", "/")
+        except ValueError:
+            calibration_model_rel = str(model_path).replace("\\", "/")
+
     summary = {
         "scene_time": t_sar.isoformat() if t_sar else None,
         "gate_radius_m": args.gate_m,
         "contacts_fused": len(contacts),
         "ais_tracks_loaded": len(tracks),
         "verdict_counts": counts,
+        "calibration_model": calibration_model_rel,
     }
     summary_path = output_dir / "summary.json"
     summary_path.write_text(json.dumps(summary, indent=2))

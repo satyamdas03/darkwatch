@@ -58,6 +58,11 @@ DEFAULT_STATIC_CONFIDENCE_FLOOR = 0.3
 # vessel, but dark vessels are still possible.
 DEFAULT_DARK_ARTIFACT_COUPLING = 0.6
 
+# Physical-plausibility gate for AIS matches. A SAR contact that is far
+# larger than the reported cooperative vessel cannot be that vessel.
+DEFAULT_PLAUSIBILITY_LENGTH_TOLERANCE = 5.0
+DEFAULT_PLAUSIBILITY_ABSOLUTE_MARGIN_M = 200.0
+
 
 @dataclass
 class TrackAssociation:
@@ -201,6 +206,36 @@ def size_artifact_confidence(
     return float(min(conf, 1.0))
 
 
+def physical_plausibility_confidence(
+    contact: Contact,
+    association: TrackAssociation | None,
+    track: AISTrack | None,
+    length_tolerance: float = DEFAULT_PLAUSIBILITY_LENGTH_TOLERANCE,
+    absolute_margin_m: float = DEFAULT_PLAUSIBILITY_ABSOLUTE_MARGIN_M,
+) -> float:
+    """Return 0..1 confidence that the SAR contact size matches the AIS vessel.
+
+    A SAR contact whose maximum dimension is much larger than the reported
+    vessel length (plus tolerance for SAR smear, wake, and mooring offset) is
+    unlikely to be that vessel. This gate protects against strong AIS matches on
+    radar artifacts that cover many pixels.
+    """
+    if association is None or track is None:
+        return 1.0
+    vessel_length = track.length_m
+    if vessel_length is None or vessel_length <= 0:
+        return 1.0
+    max_sar_dim = max(contact.width_m or 0.0, contact.length_m or 0.0)
+    allowed = vessel_length * length_tolerance + absolute_margin_m
+    if max_sar_dim <= allowed:
+        return 1.0
+    excess = max_sar_dim - allowed
+    scale = allowed
+    if scale <= 0:
+        return 0.0
+    return max(0.0, min(1.0, 1.0 - excess / scale))
+
+
 def associate_contact(
     contact: Contact,
     tracks: Iterable[AISTrack],
@@ -222,6 +257,9 @@ def associate_contact(
     size_tile_edge_min_tile_ratio: float = DEFAULT_SIZE_TILE_EDGE_MIN_TILE_RATIO,
     artifact_conf_ais_discount_power: float = DEFAULT_ARTIFACT_CONF_AIS_DISCOUNT_POWER,
     dark_artifact_coupling: float = DEFAULT_DARK_ARTIFACT_COUPLING,
+    enable_physical_plausibility: bool = True,
+    plausibility_length_tolerance: float = DEFAULT_PLAUSIBILITY_LENGTH_TOLERANCE,
+    plausibility_absolute_margin_m: float = DEFAULT_PLAUSIBILITY_ABSOLUTE_MARGIN_M,
     image_shape_px: tuple[int, int] | None = None,
 ) -> ContactVerdict:
     """Compute the fusion verdict for a single SAR contact.
@@ -257,6 +295,12 @@ def associate_contact(
             0.0 disables the discount.
         dark_artifact_coupling: how strongly artifact evidence also competes
             with the dark-vessel residual.
+        enable_physical_plausibility: if True, down-weight an AIS match when
+            the SAR contact is physically incompatible with the matched vessel.
+        plausibility_length_tolerance: multiplier on the matched AIS vessel
+            length allowed when checking SAR contact size compatibility.
+        plausibility_absolute_margin_m: absolute margin (m) added to the allowed
+            SAR contact maximum dimension.
         image_shape_px: optional (height, width) of the source tile, used for
             far-edge truncation checks.
 
@@ -267,6 +311,11 @@ def associate_contact(
         t_sar = contact.acquisition_time
     if isinstance(t_sar, datetime) and t_sar.tzinfo is None:
         t_sar = t_sar.replace(tzinfo=timezone.utc)
+
+    # Materialize tracks once; the physical-plausibility gate needs a lookup
+    # from MMSI to the full track record (length, width, etc.).
+    tracks = list(tracks)
+    track_by_mmsi = {t.mmsi: t for t in tracks}
 
     reasoning: list[str] = []
     sar_sigma = _sar_sigma_m(contact)
@@ -328,6 +377,25 @@ def associate_contact(
     # Preserve the AIS match probability conditional on the contact being a real
     # vessel. This is used to discount artifact evidence for strong matches.
     p_matched_given_real = p_clear
+
+    # Physical-plausibility gate: a SAR contact far larger than the matched
+    # cooperative vessel cannot be that vessel.
+    if enable_physical_plausibility and best_association is not None:
+        matched_track = track_by_mmsi.get(best_association.mmsi)
+        phys_plausible = physical_plausibility_confidence(
+            contact,
+            best_association,
+            matched_track,
+            length_tolerance=plausibility_length_tolerance,
+            absolute_margin_m=plausibility_absolute_margin_m,
+        )
+        if phys_plausible < 1.0:
+            p_matched_given_real *= phys_plausible
+            reasoning.append(
+                f"Physical-plausibility gate: SAR max_dim incompatible with "
+                f"AIS vessel length ({matched_track.length_m:.0f} m); "
+                f"match confidence reduced to {phys_plausible:.3f}."
+            )
 
     # Detection confidence feeds into real-vessel probability.
     # Low-confidence detections keep some artifact probability; high-confidence
@@ -401,10 +469,8 @@ def associate_contact(
         )
 
     # Remaining real-vessel mass is split between clear and dark according to
-    # the AIS evidence. Capture the AIS-derived match probability first so it
-    # is not corrupted by the rescaling on the next line.
+    # the AIS evidence. p_matched_given_real already reflects physical-plausibility.
     real_mass = max(0.0, 1.0 - p_artifact)
-    p_matched_given_real = p_clear
     p_clear = real_mass * p_matched_given_real
     p_dark = real_mass * (1.0 - p_matched_given_real)
     p_review = 0.0
@@ -497,6 +563,9 @@ def associate_all_contacts(
     size_tile_edge_min_tile_ratio: float = DEFAULT_SIZE_TILE_EDGE_MIN_TILE_RATIO,
     artifact_conf_ais_discount_power: float = DEFAULT_ARTIFACT_CONF_AIS_DISCOUNT_POWER,
     dark_artifact_coupling: float = DEFAULT_DARK_ARTIFACT_COUPLING,
+    enable_physical_plausibility: bool = True,
+    plausibility_length_tolerance: float = DEFAULT_PLAUSIBILITY_LENGTH_TOLERANCE,
+    plausibility_absolute_margin_m: float = DEFAULT_PLAUSIBILITY_ABSOLUTE_MARGIN_M,
     image_shape_px: tuple[int, int] | None = None,
 ) -> list[ContactVerdict]:
     """Run association for every contact using the same track collection."""
@@ -522,6 +591,9 @@ def associate_all_contacts(
             size_tile_edge_min_tile_ratio,
             artifact_conf_ais_discount_power,
             dark_artifact_coupling,
+            enable_physical_plausibility,
+            plausibility_length_tolerance,
+            plausibility_absolute_margin_m,
             image_shape_px,
         )
         for c in contacts

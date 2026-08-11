@@ -8,11 +8,13 @@ __pycache__/
 .ruff_cache/
 *.log
 .ipynb_checkpoints/
-# Exception: calibration labels are small and needed to reproduce the report
+# Exception: calibration labels + models are small and needed to reproduce the report
 !data/processed/calibration_labels.json
 !data/processed/calibration_labels_v4_adaptive.json
 !data/processed/calibration_labels_v4_adaptive_recal.json
 !data/processed/calibration_labels_v4_adaptive_recal2.json
+!data/processed/calibration_labels_v4_adaptive_recal3.json
+!data/processed/fusion_calibration_v4_adaptive_recal3.json
 # Large downloaded / generated data (keep broad + specific for clarity)
 data/
 data/raw/s1/*.zip
@@ -40,3 +42,4 @@ notebooks/tile_*.png
 # Exception: calibration reports + plots are the auditable output of a session
 !notebooks/calibration_v4_adaptive_recal/
 !notebooks/calibration_v4_adaptive_recal2/
+!notebooks/calibration_recal3/

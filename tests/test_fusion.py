@@ -265,3 +265,40 @@ def test_strong_ais_match_discounts_static_artifact_penalty():
     verdict = associate_contact(contact, [track], check_static_objects=True)
     assert verdict.verdict == Verdict.CLEAR
     assert verdict.p_clear > verdict.p_artifact
+
+
+def test_plausible_ais_match_stays_clear():
+    """A SAR contact sized like the matched AIS vessel should stay CLEAR."""
+    df = pd.DataFrame(
+        [
+            {"BaseDateTime": "2024-07-11T14:08:00Z", "LAT": 34.55, "LON": -120.60, "SOG": 10.0},
+            {"BaseDateTime": "2024-07-11T14:10:00Z", "LAT": 34.55, "LON": -120.60, "SOG": 10.0},
+        ]
+    )
+    df["BaseDateTime"] = pd.to_datetime(df["BaseDateTime"], utc=True)
+    track = AISTrack(mmsi=123456789, messages=df, length_m=80.0, width_m=20.0)
+    contact = _contact_at(-120.60, 34.55, confidence=0.85)
+    contact.width_m = 30.0
+    contact.length_m = 100.0
+    verdict = associate_contact(contact, [track], check_static_objects=True)
+    assert verdict.verdict == Verdict.CLEAR
+    assert verdict.p_clear > verdict.p_artifact
+
+
+def test_oversized_ais_match_is_flagged_artifact():
+    """A SAR contact far larger than the matched AIS vessel must not be CLEAR."""
+    df = pd.DataFrame(
+        [
+            {"BaseDateTime": "2024-07-11T14:08:00Z", "LAT": 34.55, "LON": -120.60, "SOG": 10.0},
+            {"BaseDateTime": "2024-07-11T14:10:00Z", "LAT": 34.55, "LON": -120.60, "SOG": 10.0},
+        ]
+    )
+    df["BaseDateTime"] = pd.to_datetime(df["BaseDateTime"], utc=True)
+    track = AISTrack(mmsi=123456789, messages=df, length_m=50.0, width_m=20.0)
+    contact = _contact_at(-120.60, 34.55, confidence=0.85)
+    contact.width_m = 1500.0
+    contact.length_m = 1500.0
+    verdict = associate_contact(contact, [track], check_static_objects=True)
+    assert verdict.verdict != Verdict.CLEAR
+    assert verdict.p_clear < verdict.p_artifact
+    assert verdict.p_artifact > 0.5

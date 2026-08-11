@@ -39,8 +39,9 @@ This is both a real-world surveillance system and a research problem in probabil
 |---|---|---|
 | Match logic | Nearest-neighbor join | **Gaussian likelihood + softmax normalization** over all nearby tracks |
 | Uncertainty | Binary match / no-match | **Four-component probabilities**: `CLEAR`, `DARK`, `ARTIFACT`, `REVIEW` |
-| Calibration | None | **Brier-score / reliability evaluation** against ground-truthable labels |
+| Calibration | None | **Brier-score / reliability evaluation** + learned per-class Platt calibration |
 | Static objects | None | **Oil-platform / rig exclusion** shifts fixed-structure contacts to `ARTIFACT` |
+| AIS-match gate | None | **Physical-plausibility gate** rejects oversized SAR contacts falsely matched to small cooperative vessels |
 | Coverage gaps | None | Explicit adjustment when no AIS exists within 2× the gate |
 | Evidence | Silent | Every verdict carries a **reasoning trail**, nearest-track metadata, and interactive map |
 | Cost | Enterprise AIS feeds + cloud GPUs | Free/open data + **single consumer GPU** (RTX 5060 8 GB) |
@@ -116,21 +117,25 @@ Interactive map: [`notebooks/fusion_20240723_map.html`](notebooks/fusion_2024072
 
 > **Detector update (Session #7):** the mixed SSDD+GRD detector initially missed these small, low-backscatter targets. After fixing a stale-label augmentation bug and retraining `darkwatch_yolov8n_ssdd_grd_v4`, the model now recovers **both July 23 DARK vessels** — at confidences **0.764** and **0.370** with adaptive dB stretch. The SSDD→GRD domain gap is closed.
 
-### 2024-08-11: fourth scene and calibration dataset expansion
+### 2024-08-11: fourth scene and the KNOX T plausibility lesson
 
 A fourth scene produced **20 contacts** against **3 AIS tracks**:
 
 | Verdict | Count | Examples |
 |---|---|---|
-| **ARTIFACT** | 15 | 7 platform-adjacent contacts + 6 oversized sea-surface patches |
-| **CLEAR** | 2 | RYAN T (281 m from MMSI 367104050) |
-| **DARK** | 2 | No AIS within gate, no platform nearby |
-| **REVIEW** | 1 | Thin ambiguous streak |
+| **ARTIFACT** | 16 | 7 platform-adjacent contacts + 6 oversized sea-surface patches + KNOX T mismatch |
+| **CLEAR** | 1 | RYAN T (281 m from MMSI 367104050) |
+| **DARK** | 3 | No AIS within gate, no platform nearby |
+| **REVIEW** | 0 | — |
 
-**Critical calibration correction:** one contact matched to **KNOX T** at 995 m was so oversized (1591 m × 1543 m) that it cannot physically be the cooperative vessel. It is labeled **ARTIFACT** despite a high AIS association score, teaching the model that AIS association must be gated by plausible vessel dimensions.
+**Critical calibration correction:** two strong AIS matches were physically implausible:
+- **KNOX T** (32 m) matched a **1591 m × 1543 m** SAR contact at 995 m.
+- **OCEAN SENTINEL** (20 m) matched a **1950 m × 1129 m** SAR contact at 1644 m.
 
-Full report: [`notebooks/fusion_20240811_report.md`](notebooks/fusion_20240811_report.md).  
-Interactive map: [`notebooks/fusion_20240811_map.html`](notebooks/fusion_20240811_map.html).
+After applying the physical-plausibility gate, both are now classified **ARTIFACT** instead of CLEAR. This teaches the model that a high AIS association score is necessary but not sufficient — the SAR contact dimensions must be compatible with the cooperative vessel.
+
+Full report: [`notebooks/fusion_20240811_v4_adaptive_recal3_report.md`](notebooks/fusion_20240811_v4_adaptive_recal3_report.md).  
+Interactive map: [`notebooks/fusion_20240811_v4_adaptive_recal3_map.html`](notebooks/fusion_20240811_v4_adaptive_recal3_map.html).
 
 ---
 
@@ -182,11 +187,18 @@ python scripts/fetch_ais.py --date 2024-07-11 \
   --center-time "2024-07-11T14:09:10Z" \
   --time-window-minutes 60
 
-# 6. Fuse SAR contacts with AIS tracks
+# 6. Fuse SAR contacts with AIS tracks (optionally apply a saved calibration model)
 python scripts/fuse_contacts.py \
   --contacts data/processed/detections_20240711/contacts.json \
   --ais data/external/ais/ais_2024-07-11_clipped.csv \
   --output-dir data/processed/fusion_20240711
+
+# 6b. Apply the recal3 calibration model to the output probabilities
+python scripts/fuse_contacts.py \
+  --contacts data/processed/detections_20240711/contacts.json \
+  --ais data/external/ais/ais_2024-07-11_clipped.csv \
+  --output-dir data/processed/fusion_20240711_recal3 \
+  --calibration-model data/processed/fusion_calibration_v4_adaptive_recal3.json
 
 # 7. Generate the human-readable Markdown report
 python scripts/fusion_report.py \
@@ -215,25 +227,27 @@ Darkwatch is built to be **honest about uncertainty**, not just confident.
   - Per-class **Brier scores** (`CLEAR`, `DARK`, `ARTIFACT`).
   - **Reliability diagrams** showing predicted probability vs observed fraction.
   - Probability-distribution histograms by true label.
-- **`data/processed/calibration_labels_v4_adaptive_recal2.json`** is the active auditable label source (46 contacts across four scenes: 27 ARTIFACT, 7 CLEAR, 9 DARK, 3 UNKNOWN).
+- **`data/processed/calibration_labels_v4_adaptive_recal3.json`** is the active auditable label source (46 contacts across four scenes: 27 ARTIFACT, 7 CLEAR, 9 DARK, 3 UNKNOWN).
+- **`data/processed/fusion_calibration_v4_adaptive_recal3.json`** is the saved per-class Platt calibration model applied at recal3 inference.
+- **`scripts/fit_calibration.py`** fits a new calibration model from labels and raw verdicts.
 - **`scripts/visualize_fusion.py`** creates interactive Folium maps with SAR contacts, AIS tracks, oil-platform markers, and 2 km gate circles.
 - **`scripts/download_ais_noaa.py`** downloads NOAA daily AIS zip files with resume support.
 - **`scripts/process_scene.py`** is an end-to-end wrapper: S1 download → prep tiles → detect → fetch AIS → fuse → report + map.
 
-Latest calibration metrics (46 labels):
+Latest recal3 calibration metrics (46 labels, in-sample after gate + calibration):
 
 | Class | Labeled positives | Mean predicted | Brier score |
 |---|---|---|---|
-| CLEAR | 7 | 0.1168 | 0.0259 |
-| DARK | 9 | 0.3394 | 0.0929 |
-| ARTIFACT | 27 | 0.4411 | 0.0945 |
+| CLEAR | 7 | 0.0718 | 0.0679 |
+| DARK | 9 | 0.2815 | 0.0641 |
+| ARTIFACT | 27 | 0.5995 | 0.0793 |
 
 Run the calibration report:
 
 ```bash
 python scripts/evaluate_calibration.py \
-  --labels data/processed/calibration_labels_v4_adaptive_recal2.json \
-  --output-dir notebooks/calibration_v4_adaptive_recal2
+  --labels data/processed/calibration_labels_v4_adaptive_recal3.json \
+  --output-dir notebooks/calibration_recal3
 ```
 
 Generate a fusion map:
@@ -294,22 +308,19 @@ darkwatch/
 | 0 | Recon & first real SAR on screen | ✅ |
 | 1 | Automated SAR ingestion & prep | ✅ |
 | 2 | Vessel detection baseline | ✅ Baseline trained; ✅ SSDD→GRD domain-gap closure complete (`darkwatch_yolov8n_ssdd_grd_v4`) |
-| 3 | **Fusion & Attribution** | ✅ Baseline complete: static-object exclusion, four real scenes, 46 labeled contacts, calibration framework, interactive maps; next: learned calibration layer or more scenes |
+| 3 | **Fusion & Attribution** | ✅ Baseline complete: static-object exclusion, physical-plausibility AIS gate, learned per-class Platt calibration, four real scenes, 46 labeled contacts, calibration framework, interactive maps; next: scale to ~100 labels and validate in a new theater |
 | 4 | Behavior & intent (zones, persistence, rendezvous) | ⏳ |
 | 5 | Alert & evidence dossiers | ⏳ |
 
 **Next priorities:**
-1. **Implement a learned calibration layer** (highest impact for the core goal):
-   - Fit isotonic regression or Platt scaling on the 46-label dataset so that `p_dark = 0.73` actually means ~73% of similar cases are dark.
-   - Use scene-level cross-validation to avoid overfitting the small dataset.
-2. **Add a physical-plausibility gate for AIS matches:**
-   - The KNOX T oversized mismatch (1591 m × 1543 m SAR contact vs a single cooperative vessel) shows that high association probability is not enough.
-   - Penalize matches when SAR contact dimensions are incompatible with the AIS vessel type / reported size.
-3. **Collect more calibration scenes** to reach ~100 labeled contacts:
+1. **Scale the calibration dataset to ~100 labeled contacts** (highest impact for the core goal):
    - Target busy traffic for more **CLEAR** labels and quiet open-water passes for more unambiguous **DARK** labels.
    - Use `scripts/process_scene.py` to automate the download → prep → detect → fuse → label pipeline.
-4. **Adaptive-stretch production path:** decide when to use default vs adaptive dB stretch based on scene statistics, and expose the choice cleanly in the CLI/API.
-5. **Begin Phase 4 behavior context:** integrate public MPA / EEZ / fishing-zone overlays and start persistence tracking across repeat passes.
+2. **Validate out-of-sample in a second theater**:
+   - The current gate and calibration model are fitted on the Santa Barbara Channel.
+   - Run a fresh scene (e.g., Gulf of Mexico, Chesapeake Bay, or Southern California Bight) and measure Brier degradation to guide generalization improvements.
+3. **Adaptive-stretch production path:** decide when to use default vs adaptive dB stretch based on scene statistics, and expose the choice cleanly in the CLI/API.
+4. **Begin Phase 4 behavior context:** integrate public MPA / EEZ / fishing-zone overlays and start persistence tracking across repeat passes.
 
 ---
 

@@ -14,9 +14,9 @@
 | **Tagline** | A radar contact with no transponder is either noise, a rig, a mismatch — or a ship that chose to disappear. Darkwatch decides which, and says how sure it is. |
 | **Goal** | Build a maritime surveillance system that detects vessels that have deliberately switched off AIS, by fusing free Sentinel-1 SAR imagery with AIS broadcasts, and produces calibrated, auditable dark-vessel verdicts. |
 | **Mode** | Impact-first, funding-agnostic, single-consumer-GPU research/engineering build. |
-| **Status** | Phase 2 — Vessel Detection baseline COMPLETE; Session #7 COMPLETE: SSDD→GRD domain gap closed. Mixed YOLOv8n detector `darkwatch_yolov8n_ssdd_grd_v4` trained from corrected weak-positive chips and validated; July 23 weak-target recall regression fixed (both known DARK vessels recovered). Phase 3 Fusion & Attribution baseline COMPLETE: static-object exclusion + four real scenes fused, calibration framework + interactive maps. Session #11 COMPLETE: 2024-08-11 Sentinel-1 scene integrated; calibration dataset expanded from 26 to 46 labeled contacts (27 ARTIFACT, 7 CLEAR, 9 DARK, 3 UNKNOWN); oversized KNOX T AIS mismatch captured as ARTIFACT; calibration report regenerated; next: collect more scenes or implement learned calibration layer |
+| **Status** | Phase 2 — Vessel Detection baseline COMPLETE; Session #7 COMPLETE: SSDD→GRD domain gap closed. Mixed YOLOv8n detector `darkwatch_yolov8n_ssdd_grd_v4` trained from corrected weak-positive chips and validated; July 23 weak-target recall regression fixed (both known DARK vessels recovered). Phase 3 Fusion & Attribution baseline COMPLETE: static-object exclusion + four real scenes fused, calibration framework + interactive maps. Session #12 COMPLETE: physical-plausibility AIS gate implemented and tuned, learned per-class Platt calibration layer fitted, 46-label recal3 dataset locked; oversized KNOX T and OCEAN SENTINEL mismatches now correctly pushed to ARTIFACT; calibration Brier improved across all classes |
 | **Start Date** | 2026-08-04 |
-| **Last Updated** | 2026-08-09 (Session #11: 2024-08-11 scene integrated; calibration dataset expanded to 46 labeled contacts; next: collect more scenes or implement learned calibration layer) |
+| **Last Updated** | 2026-08-11 (Session #12: physical-plausibility gate + learned calibration layer implemented; recal3 locked; next: scale to ~100 labels and validate in a new theater) |
 | **Current Branch** | main |
 | **Git Remote** | `https://github.com/satyamdas03/darkwatch` (public, pushed 2026-08-04) |
 | **Lead Engineer** | Bull (Claude Code agent) |
@@ -286,7 +286,7 @@ darkwatch/
 | 0 | **Recon & first light** | Get real SAR onto the screen; pick test theater | ✅ Complete | Bull | Copernicus + NOAA verified; first scene calibrated and viewed |
 | 1 | **SAR Ingestion & Prep (S1)** | Scenes → analysis-ready tiles, automatically | ✅ Complete | Bull | `prep_s1.py`; land-mask → tile pipeline validated on ocean scene |
 | 2 | **Vessel Detection (S2)** | Scene in, clean contacts out | ✅ Baseline complete; ✅ SSDD→GRD domain-gap closure complete (Session #7) | Bull | `darkwatch_yolov8n_ssdd_grd_v4` recovers July 23 weak targets; default + adaptive stretch paths validated; next: scale calibration with more scenes |
-| 3 | **Fusion & Attribution (S3)** ★ | Calibrated dark-vessel attribution | ✅ Baseline complete; ✅ v4 adaptive calibration scaled (Session #8); ✅ fusion priors recalibrated with size/shape artifact evidence (Session #9); ✅ Session #9 regressions fixed with match-aware artifact discount + tile-edge size guard (Session #10); ✅ fourth scene integrated and calibration dataset expanded (Session #11); next: learned calibration layer + physical-plausibility AIS gate | Bull | Four scenes fused (2024-07-11, 07-18, 07-23, 08-11); 46 labeled contacts (27 ARTIFACT, 7 CLEAR, 9 DARK, 3 UNKNOWN); calibration framework live; active label source `data/processed/calibration_labels_v4_adaptive_recal2.json`; next: implement isotonic/Platt calibration, add size/type AIS-match gate, then collect more scenes |
+| 3 | **Fusion & Attribution (S3)** ★ | Calibrated dark-vessel attribution | ✅ Baseline complete; ✅ v4 adaptive calibration scaled (Session #8); ✅ fusion priors recalibrated with size/shape artifact evidence (Session #9); ✅ Session #9 regressions fixed with match-aware artifact discount + tile-edge size guard (Session #10); ✅ fourth scene integrated and calibration dataset expanded (Session #11); ✅ physical-plausibility AIS gate + learned Platt calibration layer implemented and recal3 locked (Session #12); next: scale to ~100 labels and validate in a new theater | Bull | Four scenes fused (2024-07-11, 07-18, 07-23, 08-11); 46 labeled contacts (27 ARTIFACT, 7 CLEAR, 9 DARK, 3 UNKNOWN); active label source `data/processed/calibration_labels_v4_adaptive_recal3.json`; calibration model `data/processed/fusion_calibration_v4_adaptive_recal3.json`; recal3 reports/maps generated; next: collect more scenes and validate generalization |
 | 4 | **Behavior & Intent (S4)** | Ranked alerts with context | ⏳ Pending | Bull | Use GFW + public zone data |
 | 5 | **Evidence Layer (S5)** | Auditable dossiers + validation | ⏳ Pending | Bull | Write up method |
 
@@ -360,8 +360,9 @@ darkwatch/
 | 2026-08-05 | ✅ RESOLVED — SSDD→GRD domain gap / July 23 weak-target recall regression fixed by v4 mixed detector + photometric weak-positive augmentation | High — `darkwatch_yolov8n_ssdd_grd_v4` recovers both July 23 DARK vessels; domain gap is closed for current test theater | Bull |
 | 2026-08-05 | ✅ All work committed/pushed: `61a1dc5` | — | Bull |
 | 2026-08-09 | ✅ Session #11: 2024-08-11 scene integrated; 46 labeled contacts; next: learned calibration + physical-plausibility gate | High — moves the core calibration goal forward before more scene collection | Bull |
-| 2026-08-09 | **OPEN — Implement learned calibration layer on 46-label dataset** | High — makes `p_dark = 0.73` actually mean ~73% dark; blocker to strong empirical claims | Bull |
-| 2026-08-09 | **OPEN — Add physical-plausibility gate for AIS matches** | High — prevents oversized SAR contacts from being falsely matched to single cooperative vessels (KNOX T lesson) | Bull |
+| 2026-08-09 | ✅ RESOLVED — Implement learned calibration layer on 46-label dataset | High — per-class Platt scaling now saved and applied at inference; Brier improved for ARTIFACT, CLEAR, DARK | Bull |
+| 2026-08-09 | ✅ RESOLVED — Add physical-plausibility gate for AIS matches | High — prevents oversized SAR contacts from being falsely matched to single cooperative vessels (KNOX T lesson) | Bull |
+| 2026-08-11 | **OPEN — Scale calibration dataset to ~100 labels and validate in a second theater** | High — current calibration is in-sample on Santa Barbara Channel; need out-of-sample generalization before strong claims | Bull |
 
 ---
 
@@ -736,6 +737,43 @@ darkwatch/
   - Add `.gitignore` exceptions for `data/processed/calibration_labels_v4_adaptive_recal2.json` and calibration report directories if not already present; commit the active label source and report so the dataset is auditable.
 - **Tests pass:** `python -m pytest tests/ -q` → **19 passed**.
 - **Next unlock:** collect additional scenes (especially more CLEAR vessel matches and unambiguous open-water DARK cases) to reach ~100 labeled contacts, or implement a learned calibration layer (isotonic/Platt) on the 46-label dataset.
+
+### 2026-08-11 — Session #12: physical-plausibility AIS gate + learned calibration layer, recal3 locked
+- **Goal:** close the two highest-impact Phase 3 gaps identified in Session #11: (1) an oversized SAR contact with a strong AIS match must not be called CLEAR, and (2) raw fusion probabilities must be empirically calibrated so reported confidences match observed frequencies.
+- **Completed:**
+  - Implemented `physical_plausibility_confidence()` in `darkwatch/fusion/associate.py`.
+    - Compares the SAR contact's max dimension to the matched AIS vessel's reported `Length`.
+    - Defaults tuned to `length_tolerance=5.0` and `absolute_margin_m=200.0` so that normal SAR smearing of small cooperative vessels is tolerated, while extreme mismatches like the 1591 m KNOX T contact are penalized.
+    - Reduces `p_matched_given_real` when a match is implausible; this disables the match-aware artifact discount, letting oversize/static evidence push the verdict toward ARTIFACT.
+  - Added CLI knobs to `scripts/fuse_contacts.py` (`--disable-physical-plausibility`, `--plausibility-length-tolerance`, `--plausibility-absolute-margin-m`).
+  - Added two regression tests in `tests/test_fusion.py`: a plausible small-vessel match stays CLEAR, and an oversized match is flagged ARTIFACT.
+  - Re-ran fusion for all four scenes with the gate, producing `data/processed/fusion_*_v4_adaptive_recal3/` and `data/processed/calibration_labels_v4_adaptive_recal3.json`.
+  - Verified the KNOX T oversized contact (`vv_c9565_r7943_det0002`, 1591 m × 1543 m matched to 32 m KNOX T) now comes back **ARTIFACT** (`p_artifact = 0.6862`) instead of CLEAR.
+  - Implemented `darkwatch/fusion/calibration.py`: a small per-class Platt-scaling model with L2 regularization, fitted by minimizing Brier score.
+  - Implemented `scripts/fit_calibration.py` to fit the model on the 46 recal3 labels and save it to `data/processed/fusion_calibration_v4_adaptive_recal3.json`.
+  - Integrated optional calibration-model application into `scripts/fuse_contacts.py` and `scripts/evaluate_calibration.py` via `--calibration-model`.
+  - Re-ran all four recal3 fusion runs with the saved calibration model applied, producing calibrated verdicts and probabilities.
+  - Generated recal3 fusion reports and interactive maps:
+    - `notebooks/fusion_20240711_v4_adaptive_recal3_report.md` + `_map.html`
+    - `notebooks/fusion_20240718_v4_adaptive_recal3_report.md` + `_map.html`
+    - `notebooks/fusion_20240723_v4_adaptive_recal3_report.md` + `_map.html`
+    - `notebooks/fusion_20240811_v4_adaptive_recal3_report.md` + `_map.html`
+  - Regenerated calibration report: `notebooks/calibration_recal3/calibration_report.md` with reliability diagrams and probability distributions.
+- **Calibration impact (recal3, in-sample, 46 labels):**
+  - **ARTIFACT Brier:** 0.1280 (gate only) → 0.0793 (gate + calibration)
+  - **CLEAR Brier:** 0.1275 → 0.0679
+  - **DARK Brier:** 0.1102 → 0.0641
+  - Mean predicted probabilities are closer to observed label fractions in every class; reliability plots hug the diagonal better.
+- **Verdict impact:**
+  - All 9 DARK labels correctly predicted DARK.
+  - 26 of 27 ARTIFACT labels correctly predicted ARTIFACT.
+  - 4 of 7 CLEAR labels correctly predicted CLEAR; the 3 CLEAR→ARTIFACT errors are the oversized KNOX T and OCEAN SENTINEL matches, which are now treated as implausible artifacts rather than confident matches (labels may need re-review).
+- **Decisions:**
+  - Active calibration source is now `data/processed/calibration_labels_v4_adaptive_recal3.json`.
+  - Saved calibration model `data/processed/fusion_calibration_v4_adaptive_recal3.json` is applied at recal3 inference time by default.
+  - Default physical-plausibility constants are `length_tolerance=5.0`, `absolute_margin_m=200.0`.
+- **Tests pass:** `python -m pytest tests/ -q` → **21 passed**.
+- **Next unlock:** scale the calibration dataset to ~100 labeled contacts and validate in a second theater to test out-of-sample generalization of the gate and calibration model.
 
 ---
 
