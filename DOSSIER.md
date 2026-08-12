@@ -16,7 +16,7 @@
 | **Mode** | Impact-first, funding-agnostic, single-consumer-GPU research/engineering build. |
 | **Status** | Phase 2 — Vessel Detection baseline COMPLETE; Session #7 COMPLETE: SSDD→GRD domain gap closed. Mixed YOLOv8n detector `darkwatch_yolov8n_ssdd_grd_v4` trained from corrected weak-positive chips and validated; July 23 weak-target recall regression fixed (both known DARK vessels recovered). Phase 3 Fusion & Attribution baseline COMPLETE: static-object exclusion + four real scenes fused, calibration framework + interactive maps. Session #12 COMPLETE: physical-plausibility AIS gate implemented and tuned, learned per-class Platt calibration layer fitted, 46-label recal3 dataset locked. Session #13 COMPLETE: calibration dataset expanded to 122 labels across Santa Barbara + Gulf of Mexico; cross-theater validation reveals Santa-Barbara-only calibration overfit; combined cross-theater model selected as default. Session #13.5 COMPLETE: BOEM/BSEE Gulf of Mexico platform catalog integrated into static-object exclusion; `--theater` flag added to fusion CLI |
 | **Start Date** | 2026-08-04 |
-| **Last Updated** | 2026-08-11 (Session #13: 122-label cross-theater calibration dataset; Session #13.5: Gulf static-object catalog added; Session #14: Southern California Bight third-theater validation in progress) |
+| **Last Updated** | 2026-08-11 (Session #14 continued: geocoder robustness fix, overlap-aware scene scoring, SCB top candidate reprocessing; revolutionary roadmap approved and in execution) |
 | **Current Branch** | main |
 | **Git Remote** | `https://github.com/satyamdas03/darkwatch` (public, pushed 2026-08-04) |
 | **Lead Engineer** | Bull (Claude Code agent) |
@@ -840,26 +840,21 @@ darkwatch/
   - Collect a third theater (e.g., Mediterranean or North Sea) to test true out-of-sample transfer of the combined calibration model.
   - Consider a theater-aware or regularized calibration formulation (e.g., strong L2 toward identity, or per-theater intercepts) to reduce cross-theater degradation.
 
-### 2026-08-11 — Session #14 (in progress): Southern California Bight third-theater validation
-- **Goal:** test whether the 122-label combined calibration model transfers to a third theater without large local re-labeling; selected Southern California Bight as the lowest-friction candidate (same OSPR platform catalog and NOAA AIS source as Santa Barbara, but different wave climate and shipping patterns).
+### 2026-08-11 — Session #14 (continued): Southern California Bight third-theater validation + Revolutionary roadmap kickoff
+- **Goal:** test whether the 122-label combined calibration model transfers to a third theater without large local re-labeling; selected Southern California Bight as the lowest-friction candidate (same OSPR platform catalog and NOAA AIS source as Santa Barbara, but different wave climate and shipping patterns). Beyond validation, the session also kicked off the full revolutionary roadmap: unified CLI, analyst dashboard, and operational context layer.
 - **Planned operational bbox:** `-118.5,33.3,-117.5,34.0` (San Pedro Channel / Catalina Basin, open water with shipping lanes).
-- **Completed:**
-  - Generalized `scripts/pick_ocean_scene.py` to accept arbitrary `--search-bbox` and `--theater-name` while keeping Santa Barbara defaults for backward compatibility.
-  - Searched CDSE for July–August 2024 over `--search-bbox "-119.0,33.0,-117.0,34.5"` and ranked candidates by water fraction × operational overlap.
-  - Identified top candidates:
-    1. `S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441.SAFE` (water 97.64%, overlap 45.37%, score 44.30%).
-    2. `S1A_IW_GRDH_1SDV_20240718T015824_20240718T015853_054809_06ACA2_34ED.SAFE` (water 97.64%, overlap 45.35%, score 44.27%).
-    3. `S1A_IW_GRDH_1SDV_20240730T015824_20240730T015853_054984_06B2BE_5FD6.SAFE` (water 97.64%, overlap 45.28%, score 44.21%).
-- **Issue encountered:**
-  - Started end-to-end processing of the top candidate (2024-07-06) via `scripts/process_scene.py`.
-  - The prep stage produced an unexpectedly small theater window: `Window(col_off=20431, row_off=13637, width=201, height=201)` and only 1 tile / 1 contact.
-  - The background task eventually failed with exit code 1 before completing AIS fetch/fusion/report.
-  - Root cause under investigation: likely a geocoder coordinate-mapping issue for this descending pass over SCB, or a mismatch between the operational bbox and the actual SAR footprint coverage.
+- **Completed (Phase A — unblock SCB):**
+  - Diagnosed the collapsed 201×201 pixel theater window on the 2024-07-06 descending pass.
+  - Root cause: `darkwatch/s1_prep/geocode.py::bbox_to_window()` only used the valid corners of the requested bbox when the NE corners fell outside the sparse geolocation-grid convex hull, collapsing the window to a single point plus padding.
+  - Fixed `geocode.py` so `bbox_to_window()` intersects the requested bbox with the scene footprint (convex hull of the geolocation grid) and geocodes the covered portion. The same 2024-07-06 scene now produces a 5,762×5,641 px window covering the actual overlap.
+  - Updated `scripts/pick_ocean_scene.py` scoring to compute water fraction inside the operational-bbox overlap (not the whole footprint) and added `--min-overlap` (default 75%). This prevents selecting scenes with high open-water fraction but poor theater coverage.
+  - Regenerated `data/raw/s1/scene_scores_socal.json`; new top candidate is `S1A_IW_GRDH_1SDV_20240701T135253_20240701T135318_054568_06A44B_14D0.SAFE` (ascending, 44.5% operational water, 100% overlap).
+  - Started end-to-end processing of the new top candidate via `scripts/process_scene.py` (background task running).
+- **Roadmap approved:** `.claude/plans/darkwatch_revolutionary_roadmap_plan.md` covers Phase A (unblock SCB) → Phase B (third-theater validation) → Phase C (theater-aware calibration if needed) → Phase D (analyst web dashboard) → Phase E (unified CLI) → Phase F (operational context layer) → Phase G (scheduled operation) → Phase H (hardening/publication).
 - **Next action:**
-  - Inspect the 2024-07-06 scene footprint against the requested bbox and geocoder output to identify why the window collapsed to 201×201 px.
-  - If the footprint simply does not cover the chosen operational bbox well, retry with the next candidate (2024-07-18).
-  - If the geocoder is at fault, fix `darkwatch/s1_prep/geocode.py` before proceeding.
-  - Once a valid scene is processed, generate review grids, collect ~20 manual labels, and evaluate the combined calibration model's out-of-sample Brier scores.
+  - Wait for SCB scene processing to complete; if it succeeds, generate review grids and collect ~20 SCB labels.
+  - Evaluate combined calibration model transfer to SCB via `scripts/evaluate_calibration.py`.
+  - Begin dashboard / CLI implementation while validation data is being prepared.
 
 ---
 
