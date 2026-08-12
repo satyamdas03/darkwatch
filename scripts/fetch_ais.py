@@ -42,20 +42,29 @@ def download_file(url: str, dest: Path) -> None:
     """Download ``url`` to ``dest`` using curl (available in Git Bash on Windows).
 
     Uses ``curl -C -`` so a partially-written file resumes instead of restarting.
+    Progress is written to a sidecar ``.download.log`` so the subprocess never
+    deadlocks on a full stdout/stderr buffer.
     """
     import subprocess
 
     dest.parent.mkdir(parents=True, exist_ok=True)
+    log_path = dest.with_suffix(dest.suffix + ".download.log")
     print(f"Downloading {url} ...")
-    try:
-        subprocess.run(
-            ["curl", "-L", "-C", "-", "-o", str(dest), url],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-    except subprocess.CalledProcessError as exc:
-        raise RuntimeError(f"Download failed: {exc.stderr}") from exc
+    print(f"  progress log: {log_path}")
+    with log_path.open("w", encoding="utf-8") as log_f:
+        try:
+            subprocess.run(
+                ["curl", "-L", "-C", "-", "--progress-bar", "-o", str(dest), url],
+                check=True,
+                stdout=log_f,
+                stderr=subprocess.STDOUT,
+                text=True,
+            )
+        except subprocess.CalledProcessError as exc:
+            # Clean up a partial/corrupt file so the next run starts fresh.
+            if dest.exists():
+                dest.unlink(missing_ok=True)
+            raise RuntimeError(f"Download failed (see {log_path})") from exc
     print(f"Saved to {dest}")
 
 
@@ -149,6 +158,21 @@ def main() -> int:
     clipped_path = output_dir / f"ais_{date_str}_clipped.csv"
 
     if not zip_path.exists():
+        url = _daily_csv_url(date)
+        download_file(url, zip_path)
+
+    # Validate zip integrity before extracting; NOAA sometimes serves truncated
+    # files on flaky connections.
+    try:
+        with zipfile.ZipFile(zip_path, "r") as zf:
+            bad = zf.testzip()
+        if bad:
+            raise zipfile.BadZipFile(f"Corrupt member: {bad}")
+    except zipfile.BadZipFile:
+        print(f"WARNING: {zip_path} is corrupt; removing and re-downloading", file=sys.stderr)
+        zip_path.unlink(missing_ok=True)
+        if extract_dir.exists():
+            shutil.rmtree(extract_dir)
         url = _daily_csv_url(date)
         download_file(url, zip_path)
 

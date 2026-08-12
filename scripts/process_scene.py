@@ -22,7 +22,7 @@ import json
 import os
 import subprocess
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -88,14 +88,14 @@ def main() -> int:
         "product_id": args.product_id,
         "product_name": args.product_name,
         "date": args.date,
-        "started_at": datetime.utcnow().isoformat() + "Z",
+        "started_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "steps": [],
     }
     state_path = output_dir / "processing_state.json"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     def _record(step: str, status: str, **extra) -> None:
-        entry = {"step": step, "status": status, "at": datetime.utcnow().isoformat() + "Z"}
+        entry = {"step": step, "status": status, "at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")}
         entry.update(extra)
         state["steps"].append(entry)
         state_path.write_text(json.dumps(state, indent=2))
@@ -204,7 +204,7 @@ def main() -> int:
             ])
             _record("map", "completed")
 
-        state["finished_at"] = datetime.utcnow().isoformat() + "Z"
+        state["finished_at"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         state["status"] = "completed"
         state_path.write_text(json.dumps(state, indent=2))
         print("\n[ALL DONE]")
@@ -213,7 +213,7 @@ def main() -> int:
     except Exception as exc:
         state["status"] = "failed"
         state["error"] = str(exc)
-        state["finished_at"] = datetime.utcnow().isoformat() + "Z"
+        state["finished_at"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         state_path.write_text(json.dumps(state, indent=2))
         print(f"\n[FAILED] {exc}", file=sys.stderr)
         return 1
