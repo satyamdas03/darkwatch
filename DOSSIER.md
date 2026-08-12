@@ -16,7 +16,7 @@
 | **Mode** | Impact-first, funding-agnostic, single-consumer-GPU research/engineering build. |
 | **Status** | Phase 2 — Vessel Detection baseline COMPLETE; Session #7 COMPLETE: SSDD→GRD domain gap closed. Mixed YOLOv8n detector `darkwatch_yolov8n_ssdd_grd_v4` trained from corrected weak-positive chips and validated; July 23 weak-target recall regression fixed (both known DARK vessels recovered). Phase 3 Fusion & Attribution baseline COMPLETE: static-object exclusion + four real scenes fused, calibration framework + interactive maps. Session #12 COMPLETE: physical-plausibility AIS gate implemented and tuned, learned per-class Platt calibration layer fitted, 46-label recal3 dataset locked. Session #13 COMPLETE: calibration dataset expanded to 122 labels across Santa Barbara + Gulf of Mexico; cross-theater validation reveals Santa-Barbara-only calibration overfit; combined cross-theater model selected as default. Session #13.5 COMPLETE: BOEM/BSEE Gulf of Mexico platform catalog integrated into static-object exclusion; `--theater` flag added to fusion CLI |
 | **Start Date** | 2026-08-04 |
-| **Last Updated** | 2026-08-11 (Session #14 continued: geocoder robustness fix, overlap-aware scene scoring, SCB top candidate reprocessing; revolutionary roadmap approved and in execution) |
+| **Last Updated** | 2026-08-13 (Session #14 continued: geocoder robustness fix, overlap-aware scene scoring, SCB 2024-07-06 reprocessing with 108 contacts, unified CLI added; AIS re-download in progress) |
 | **Current Branch** | main |
 | **Git Remote** | `https://github.com/satyamdas03/darkwatch` (public, pushed 2026-08-04) |
 | **Lead Engineer** | Bull (Claude Code agent) |
@@ -849,12 +849,20 @@ darkwatch/
   - Fixed `geocode.py` so `bbox_to_window()` intersects the requested bbox with the scene footprint (convex hull of the geolocation grid) and geocodes the covered portion. The same 2024-07-06 scene now produces a 5,762×5,641 px window covering the actual overlap.
   - Updated `scripts/pick_ocean_scene.py` scoring to compute water fraction inside the operational-bbox overlap (not the whole footprint) and added `--min-overlap` (default 75%). This prevents selecting scenes with high open-water fraction but poor theater coverage.
   - Regenerated `data/raw/s1/scene_scores_socal.json`; new top candidate is `S1A_IW_GRDH_1SDV_20240701T135253_20240701T135318_054568_06A44B_14D0.SAFE` (ascending, 44.5% operational water, 100% overlap).
-  - Started end-to-end processing of the new top candidate via `scripts/process_scene.py` (background task running).
+  - Started end-to-end processing of the new top candidate via `scripts/process_scene.py`; download hung (likely Long-Term Archive retrieval from CDSE), so switched to the already-downloaded 2024-07-06 descending pass.
+  - Reprocessed 2024-07-06 with the geocoder fix and `--theater santa_barbara`: prep produced 84 tiles (42 VV + 42 VH) covering the actual footprint overlap, detector found **108 contacts**.
+  - NOAA AIS daily zip for 2024-07-06 was corrupt from a prior partial download; removed it and re-downloading. Reprocessing will resume after AIS fetch completes.
 - **Roadmap approved:** `.claude/plans/darkwatch_revolutionary_roadmap_plan.md` covers Phase A (unblock SCB) → Phase B (third-theater validation) → Phase C (theater-aware calibration if needed) → Phase D (analyst web dashboard) → Phase E (unified CLI) → Phase F (operational context layer) → Phase G (scheduled operation) → Phase H (hardening/publication).
+- **Completed (Phase E — unified CLI):**
+  - Added `darkwatch/cli.py` with Typer subcommands: `search-scenes`, `process-scene`, `build-labels`, `fit-calibration`, `evaluate`, `serve`.
+  - Registered `darkwatch` console entry point in `pyproject.toml`.
+  - Hardened `scripts/fetch_ais.py`: curl progress streamed to log file, corrupt zips auto-detected and re-downloaded.
+  - All unit tests still pass (`pytest tests/ -q` → 23 passed).
 - **Next action:**
-  - Wait for SCB scene processing to complete; if it succeeds, generate review grids and collect ~20 SCB labels.
-  - Evaluate combined calibration model transfer to SCB via `scripts/evaluate_calibration.py`.
-  - Begin dashboard / CLI implementation while validation data is being prepared.
+  - Complete AIS download and run fusion for 2024-07-06 SCB scene.
+  - Generate contact review grids, collect ~20 SCB labels.
+  - Evaluate combined calibration model transfer to SCB.
+  - Begin Phase D analyst web dashboard.
 
 ---
 
