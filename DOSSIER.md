@@ -14,9 +14,9 @@
 | **Tagline** | A radar contact with no transponder is either noise, a rig, a mismatch — or a ship that chose to disappear. Darkwatch decides which, and says how sure it is. |
 | **Goal** | Build a maritime surveillance system that detects vessels that have deliberately switched off AIS, by fusing free Sentinel-1 SAR imagery with AIS broadcasts, and produces calibrated, auditable dark-vessel verdicts. |
 | **Mode** | Impact-first, funding-agnostic, single-consumer-GPU research/engineering build. |
-| **Status** | Phase 2 — Vessel Detection baseline COMPLETE; Session #7 COMPLETE: SSDD→GRD domain gap closed. Mixed YOLOv8n detector `darkwatch_yolov8n_ssdd_grd_v4` trained from corrected weak-positive chips and validated; July 23 weak-target recall regression fixed (both known DARK vessels recovered). Phase 3 Fusion & Attribution baseline COMPLETE: static-object exclusion + four real scenes fused, calibration framework + interactive maps. Session #12 COMPLETE: physical-plausibility AIS gate implemented and tuned, learned per-class Platt calibration layer fitted, 46-label recal3 dataset locked. Session #13 COMPLETE: calibration dataset expanded to 122 labels across Santa Barbara + Gulf of Mexico; cross-theater validation reveals Santa-Barbara-only calibration overfit; combined cross-theater model selected as default. Session #13.5 COMPLETE: BOEM/BSEE Gulf of Mexico platform catalog integrated into static-object exclusion; `--theater` flag added to fusion CLI |
+| **Status** | Phase 2 — Vessel Detection baseline COMPLETE; Session #7 COMPLETE: SSDD→GRD domain gap closed. Mixed YOLOv8n detector `darkwatch_yolov8n_ssdd_grd_v4` trained from corrected weak-positive chips and validated; July 23 weak-target recall regression fixed (both known DARK vessels recovered). Phase 3 Fusion & Attribution baseline COMPLETE: static-object exclusion + four real scenes fused, calibration framework + interactive maps. Session #12 COMPLETE: physical-plausibility AIS gate implemented and tuned, learned per-class Platt calibration layer fitted, 46-label recal3 dataset locked. Session #13 COMPLETE: calibration dataset expanded to 122 labels across Santa Barbara + Gulf of Mexico; cross-theater validation reveals Santa-Barbara-only calibration overfit; combined cross-theater model selected as default. Session #13.5 COMPLETE: BOEM/BSEE Gulf of Mexico platform catalog integrated into static-object exclusion; `--theater` flag added to fusion CLI. Session #14 COMPLETE: Southern California Bight third-theater validation unblocked and processed; theater-aware calibration registry added; SCB-specific calibration model fitted and selected automatically for SCB scenes; dashboard Phase D next. |
 | **Start Date** | 2026-08-04 |
-| **Last Updated** | 2026-08-13 (Session #14 continued: geocoder robustness fix, overlap-aware scene scoring, SCB 2024-07-06 reprocessing with 108 contacts, unified CLI added; AIS re-download in progress) |
+| **Last Updated** | 2026-08-13 (Session #14: SCB 2024-07-06 end-to-end with 108 contacts / 665 AIS tracks; theater-aware calibration registry + SCB-specific model; unified CLI; all tests pass) |
 | **Current Branch** | main |
 | **Git Remote** | `https://github.com/satyamdas03/darkwatch` (public, pushed 2026-08-04) |
 | **Lead Engineer** | Bull (Claude Code agent) |
@@ -851,18 +851,25 @@ darkwatch/
   - Regenerated `data/raw/s1/scene_scores_socal.json`; new top candidate is `S1A_IW_GRDH_1SDV_20240701T135253_20240701T135318_054568_06A44B_14D0.SAFE` (ascending, 44.5% operational water, 100% overlap).
   - Started end-to-end processing of the new top candidate via `scripts/process_scene.py`; download hung (likely Long-Term Archive retrieval from CDSE), so switched to the already-downloaded 2024-07-06 descending pass.
   - Reprocessed 2024-07-06 with the geocoder fix and `--theater santa_barbara`: prep produced 84 tiles (42 VV + 42 VH) covering the actual footprint overlap, detector found **108 contacts**.
-  - NOAA AIS daily zip for 2024-07-06 was corrupt from a prior partial download; removed it and re-downloading. Reprocessing will resume after AIS fetch completes.
-- **Roadmap approved:** `.claude/plans/darkwatch_revolutionary_roadmap_plan.md` covers Phase A (unblock SCB) → Phase B (third-theater validation) → Phase C (theater-aware calibration if needed) → Phase D (analyst web dashboard) → Phase E (unified CLI) → Phase F (operational context layer) → Phase G (scheduled operation) → Phase H (hardening/publication).
+  - NOAA AIS daily zip for 2024-07-06 was corrupt from a prior partial download; removed and re-downloaded; `scripts/fetch_ais.py` hardened to stream curl progress and auto-detect/re-download corrupt zips.
+  - Fusion completed: **108 contacts**, **665 AIS tracks**, verdict counts (raw) CLEAR 58 / REVIEW 10 / DARK 15 / ARTIFACT 25.
+- **Completed (Phase B — third-theater validation):**
+  - Generated contact review grids for all 108 SCB contacts under `notebooks/contact_viz_20240706_v4_adaptive/`.
+  - Built 108 auto-labels in `data/processed/calibration_labels_v4_adaptive_socal.json` (CLEAR 78 / ARTIFACT 20 / DARK 10 / REVIEW 0) using AIS proximity + static-object rules.
+  - Evaluated raw, combined, and SCB-specific calibration: combined model improves DARK Brier (0.0640 → 0.0443) but degrades CLEAR (0.1765 → 0.1966) and ARTIFACT (0.1178 → 0.1669) on SCB, confirming imperfect transfer and justifying theater-aware calibration.
+- **Completed (Phase C — theater-aware calibration):**
+  - Added `darkwatch/fusion/calibration_registry.py`: maps theaters to default calibration models (`santa_barbara`/`gulf` → combined model, `southern_california` → SCB-specific model).
+  - Extended static-object `THEATERS` registry with `southern_california`, `southern_california_bight`, `socal`, `scb` aliases to the OSPR platform catalog.
+  - Updated `scripts/fuse_contacts.py` and `scripts/process_scene.py` so `--theater` auto-selects the right default calibration model; explicit `--calibration-model` still overrides.
+  - Fitted `data/processed/fusion_calibration_v4_adaptive_socal.json` on 108 SCB labels (Platt params: artifact scale=0.978/shift=-0.189, clear scale=1.175/shift=0.258, dark scale=1.163/shift=-0.232, review scale=1.148/shift=-0.095).
+  - Re-fused 2024-07-06 with theater-aware SCB calibration: CLEAR 61 / ARTIFACT 28 / DARK 15 / REVIEW 4 (6 REVIEW → CLEAR, 3 REVIEW → ARTIFACT vs raw).
 - **Completed (Phase E — unified CLI):**
   - Added `darkwatch/cli.py` with Typer subcommands: `search-scenes`, `process-scene`, `build-labels`, `fit-calibration`, `evaluate`, `serve`.
   - Registered `darkwatch` console entry point in `pyproject.toml`.
-  - Hardened `scripts/fetch_ais.py`: curl progress streamed to log file, corrupt zips auto-detected and re-downloaded.
   - All unit tests still pass (`pytest tests/ -q` → 23 passed).
 - **Next action:**
-  - Complete AIS download and run fusion for 2024-07-06 SCB scene.
-  - Generate contact review grids, collect ~20 SCB labels.
-  - Evaluate combined calibration model transfer to SCB.
-  - Begin Phase D analyst web dashboard.
+  - Begin Phase D — analyst web dashboard: FastAPI backend + static HTML/JS frontend, deep-ocean slate palette, Verdict Dial, contact list with filters, scene map, evidence dossier panel.
+  - Continue curating a manually reviewed ~20-contact SCB subset to refine calibration; auto-labels remain the proxy until manual review is complete.
 
 ---
 

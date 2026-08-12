@@ -65,7 +65,7 @@ def main() -> int:
     parser.add_argument("--conf", type=float, default=0.05)
     parser.add_argument("--output-base", type=str, default="data/processed")
     parser.add_argument("--ais-time-window-minutes", type=int, default=120, help="AIS window +/- around SAR acquisition time")
-    parser.add_argument("--theater", type=str, default=None, choices=["santa_barbara", "gulf"], help="Static-object catalog theater")
+    parser.add_argument("--theater", type=str, default=None, choices=["santa_barbara", "gulf", "southern_california"], help="Static-object catalog theater (also selects default calibration model)")
     parser.add_argument("--skip-download", action="store_true")
     parser.add_argument("--skip-prep", action="store_true")
     parser.add_argument("--skip-detect", action="store_true")

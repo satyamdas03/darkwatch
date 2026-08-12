@@ -25,6 +25,7 @@ from darkwatch.fusion.associate import (
     DEFAULT_PLAUSIBILITY_LENGTH_TOLERANCE,
 )
 from darkwatch.fusion.calibration import CalibrationModel
+from darkwatch.fusion.calibration_registry import default_calibration_model
 from darkwatch.fusion.static_objects import default_static_objects
 
 
@@ -77,7 +78,7 @@ def main() -> int:
     parser.add_argument("--plausibility-length-tolerance", type=float, default=DEFAULT_PLAUSIBILITY_LENGTH_TOLERANCE, help="Multiplier on AIS vessel length allowed for SAR contact max dimension")
     parser.add_argument("--plausibility-absolute-margin-m", type=float, default=DEFAULT_PLAUSIBILITY_ABSOLUTE_MARGIN_M, help="Absolute margin (m) added to allowed SAR contact size")
     parser.add_argument("--calibration-model", type=str, default=None, help="Optional JSON calibration model to apply to raw probabilities")
-    parser.add_argument("--theater", type=str, default=None, choices=["santa_barbara", "gulf"], help="Static-object catalog theater (santa_barbara or gulf)")
+    parser.add_argument("--theater", type=str, default=None, choices=["santa_barbara", "gulf", "southern_california"], help="Static-object catalog theater (also selects default calibration model)")
     args = parser.parse_args()
 
     contacts_path = Path(args.contacts)
@@ -132,9 +133,20 @@ def main() -> int:
     )
 
     calibration_model = None
+    calibration_source = None
     if args.calibration_model:
         calibration_model = CalibrationModel.load(args.calibration_model)
-        print(f"Loaded calibration model from {args.calibration_model}")
+        calibration_source = args.calibration_model
+    elif args.theater:
+        try:
+            calibration_path = default_calibration_model(args.theater)
+            if calibration_path is not None:
+                calibration_model = CalibrationModel.load(calibration_path)
+                calibration_source = str(calibration_path)
+        except FileNotFoundError as e:
+            print(f"WARNING: {e}; using raw probabilities", file=sys.stderr)
+    if calibration_model is not None and calibration_source is not None:
+        print(f"Loaded calibration model from {calibration_source}")
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -209,8 +221,8 @@ def main() -> int:
     for r in results:
         counts[r["verdict"]] = counts.get(r["verdict"], 0) + 1
     calibration_model_rel = None
-    if args.calibration_model:
-        model_path = Path(args.calibration_model)
+    if calibration_source:
+        model_path = Path(calibration_source)
         if not model_path.is_absolute():
             model_path = REPO_ROOT / model_path
         try:

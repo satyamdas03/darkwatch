@@ -145,7 +145,7 @@ def main() -> int:
         "--scenes",
         type=str,
         default="santa_barbara",
-        choices=["santa_barbara", "gulf"],
+        choices=["santa_barbara", "gulf", "southern_california"],
         help="Which scene group to label",
     )
     parser.add_argument(
@@ -197,12 +197,20 @@ def main() -> int:
                 "verdicts": REPO_ROOT / "data" / "processed" / "fusion_20240828_v4_adaptive" / "verdicts.json",
             },
         ]
-    else:
+    elif args.scenes == "gulf":
         scenes = [
             {
                 "name": "2024-07-08-gulf",
                 "contacts": REPO_ROOT / "data" / "processed" / "detections_20240708_v4_adaptive" / "contacts.json",
                 "verdicts": REPO_ROOT / "data" / "processed" / "fusion_20240708_v4_adaptive" / "verdicts.json",
+            },
+        ]
+    else:
+        scenes = [
+            {
+                "name": "2024-07-06-socal",
+                "contacts": REPO_ROOT / "data" / "processed" / "detections_20240706_v4_adaptive" / "contacts.json",
+                "verdicts": REPO_ROOT / "data" / "processed" / "fusion_20240706_v4_adaptive" / "verdicts.json",
             },
         ]
 

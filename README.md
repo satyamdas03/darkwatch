@@ -208,13 +208,14 @@ python scripts/fetch_ais.py --date 2024-07-11 \
   --center-time "2024-07-11T14:09:10Z" \
   --time-window-minutes 60
 
-# 6. Fuse SAR contacts with AIS tracks (optionally apply the default calibration model)
+# 6. Fuse SAR contacts with AIS tracks (--theater auto-selects calibration model)
 python scripts/fuse_contacts.py \
   --contacts data/processed/detections_20240711_v4_adaptive/contacts.json \
   --ais data/external/ais/ais_2024-07-11_clipped.csv \
-  --output-dir data/processed/fusion_20240711_v4_adaptive
+  --output-dir data/processed/fusion_20240711_v4_adaptive \
+  --theater santa_barbara
 
-# 6b. Apply the combined cross-theater calibration model
+# 6b. Override the default calibration model explicitly
 python scripts/fuse_contacts.py \
   --contacts data/processed/detections_20240711_v4_adaptive/contacts.json \
   --ais data/external/ais/ais_2024-07-11_clipped.csv \
@@ -222,8 +223,11 @@ python scripts/fuse_contacts.py \
   --theater santa_barbara \
   --calibration-model data/processed/fusion_calibration_v4_adaptive_combined.json
 
-# For a Gulf of Mexico scene, pass --theater gulf to use the BOEM platform catalog:
+# For a Gulf of Mexico scene, --theater gulf uses the BOEM platform catalog + combined calibration:
 # python scripts/fuse_contacts.py ... --theater gulf
+
+# For the Southern California Bight, --theater southern_california uses the OSPR
+# platform catalog + SCB-specific calibration model.
 
 # 7. Generate the human-readable Markdown report
 python scripts/fusion_report.py \
@@ -347,14 +351,14 @@ darkwatch/
 | 0 | Recon & first real SAR on screen | ✅ |
 | 1 | Automated SAR ingestion & prep | ✅ |
 | 2 | Vessel detection baseline | ✅ Baseline trained; ✅ SSDD→GRD domain-gap closure complete (`darkwatch_yolov8n_ssdd_grd_v4`) |
-| 3 | **Fusion & Attribution** | ✅ Complete: static-object exclusion, physical-plausibility AIS gate, learned per-class Platt calibration, 122 labeled contacts across Santa Barbara + Gulf of Mexico, cross-theater validation, calibration framework, interactive maps |
-| 4 | Behavior & intent (zones, persistence, rendezvous) | ⏳ |
+| 3 | **Fusion & Attribution** | ✅ Complete: static-object exclusion, physical-plausibility AIS gate, learned per-class Platt calibration, 122 labeled contacts across Santa Barbara + Gulf of Mexico, cross-theater validation, **theater-aware calibration registry**, SCB-specific model |
+| 4 | **Analyst dashboard & behavior context** | 🚧 In progress: deep-ocean slate UI, Verdict Dial, contact list / map / dossier |
 | 5 | Alert & evidence dossiers | ⏳ |
 
 **Next priorities:**
-1. **Third-theater validation:** collect and label a scene in the Mediterranean, North Sea, or Southern California Bight to test true out-of-sample transfer of the combined calibration model.
-2. **Theater-aware calibration:** explore per-theater intercepts or stronger L2 regularization toward identity so a Santa-Barbara-heavy model does not suppress DARK probabilities in artifact-sparse theaters.
-3. **Begin Phase 4 behavior context:** integrate public MPA / EEZ / fishing-zone overlays and start persistence tracking across repeat passes.
+1. **Analyst web dashboard (Phase 4/D):** FastAPI backend serving verdicts, static HTML/JS frontend with scene map, contact list with filters, Verdict Dial, and evidence dossier panel.
+2. **Manual SCB label refinement:** review ~20 high-confidence SCB contacts from `notebooks/contact_viz_20240706_v4_adaptive/` to replace auto-labels with audited ground truth.
+3. **Begin Phase 5 behavior context:** integrate public MPA / EEZ / fishing-zone overlays and start persistence tracking across repeat passes.
 
 ---
 

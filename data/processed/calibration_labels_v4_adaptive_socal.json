@@ -1,0 +1,550 @@
+{
+  "scenes": [
+    {
+      "name": "2024-07-06-socal",
+      "verdicts": "data/processed/fusion_20240706_v4_adaptive/verdicts.json"
+    }
+  ],
+  "labels": [
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c24015_r17221_det0000",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: ELBHOFF at 72 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c24015_r17221_det0001",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: ADVANTAGE AWARD at 61 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c23119_r17221_det0000",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: SYDNEY SPIRIT at 68 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c24015_r17221_det0002",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: DELTA AUDREY at 171 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c24015_r17221_det0002",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: TARBET SPIRIT at 45 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c24015_r17221_det0003",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: SAGA ENTERPRISE at 85 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c24015_r17221_det0004",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: IBERIAN SEA at 45 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c22223_r14533_det0000",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: CATALINA PROVIDER at 75 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c23119_r14533_det0000",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: CARNIVAL RADIANCE at 49 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c23119_r13637_det0000",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: NAVIGATOR OFTHE SEAS at 32 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c24015_r17221_det0005",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: NORD JOY at 58 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c24015_r17221_det0007",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: RISING HIMEJI at 45 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c24015_r17221_det0008",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: ROBYN J at 42 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c23119_r17221_det0002",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: BULLDOG at 23 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c22223_r14533_det0001",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: JET CAT EXPRESS at 148 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c24015_r17221_det0009",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: SEA VOYAGER at 40 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c22223_r15429_det0000",
+      "label": "ARTIFACT",
+      "note": "Oversized detection (181 m x 524 m); likely azimuth ambiguity or wind streak"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c23119_r17221_det0004",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: SEAWAYS KENOSHA at 43 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c24015_r15429_det0000",
+      "label": "ARTIFACT",
+      "note": "Static object Platform Edith at 41 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c23119_r17221_det0005",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: GRAND VISION at 107 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c24015_r17221_det0010",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: SEA VOYAGER at 1686 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c24015_r15429_det0001",
+      "label": "ARTIFACT",
+      "note": "Static object Platform Elly at 59 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c24015_r17221_det0011",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: BBC MARS at 31 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c23119_r17221_det0003",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: MAERSK ESSEN at 534 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c24015_r17221_det0012",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: SEAWAYS YELLOWSTONE at 67 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c22223_r15429_det0001",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c24015_r17221_det0009",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: SPIRIT OF PLYMOUTH at 233 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c23119_r17221_det0006",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: MAERSK ESSEN at 646 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c22223_r15429_det0002",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: JET CAT EXPRESS at 171 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c23119_r18117_det0000",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: MSC ROSA M at 240 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c22223_r16325_det0000",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: MENTAL FLOSS II at 255 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c24015_r17221_det0012",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: SAGA ENTERPRISE at 1194 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c23119_r17221_det0007",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: JAKE SHEARER at 84 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c24015_r17221_det0014",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: REDONDO at 122 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c21327_r18117_det0000",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c24015_r15429_det0002",
+      "label": "ARTIFACT",
+      "note": "Static object Platform Eureka at 57 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c24015_r17221_det0015",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: STAR SOPHIA at 626 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c23119_r13637_det0002",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: NAVIGATOR OFTHE SEAS at 1635 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c21327_r14533_det0000",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: None at 470 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c21327_r17221_det0000",
+      "label": "ARTIFACT",
+      "note": "Detection bounding box touches tile edge; likely truncation artifact"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c23119_r17221_det0006",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: CMA CGM MUNDRA at 154 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c24911_r17221_det0000",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: KALANI KAI at 480 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c22223_r17221_det0000",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: CHRISTOPHER at 908 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c22223_r15429_det0003",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c20431_r15429_det0000",
+      "label": "ARTIFACT",
+      "note": "Oversized detection (733 m x 774 m); likely azimuth ambiguity or wind streak"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c23119_r13637_det0003",
+      "label": "ARTIFACT",
+      "note": "Oversized detection (143 m x 528 m); likely azimuth ambiguity or wind streak"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c24015_r17221_det0016",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: CSCL EAST CHINA SEA at 379 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c21327_r18117_det0000",
+      "label": "ARTIFACT",
+      "note": "Oversized detection (2172 m x 2280 m); likely azimuth ambiguity or wind streak"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c23119_r17221_det0009",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: MSC ROSA M at 237 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c23119_r18117_det0000",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: MSC ROSA M at 79 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c23119_r17221_det0010",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: CSCL EAST CHINA SEA at 409 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c23119_r13637_det0004",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c21327_r15429_det0000",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c23119_r18117_det0001",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: MSC ROSA M at 388 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c22223_r15429_det0004",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c23119_r17221_det0011",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: EVER FRANK at 222 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c23119_r18117_det0002",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: MARMAC 304 at 77 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c23119_r14533_det0001",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: WATER BUFFALO at 144 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c21327_r17221_det0002",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: CHRISTOPHER at 475 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c24911_r16325_det0000",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: NEW ADVANCE at 59 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c23119_r18117_det0003",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: GEORGE III at 470 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c24015_r13637_det0000",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c24015_r18117_det0000",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: SEA SHARP at 97 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c22223_r17221_det0001",
+      "label": "ARTIFACT",
+      "note": "Detection bounding box touches tile edge; likely truncation artifact"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c22223_r17221_det0000",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: ASTRAL at 1456 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c22223_r14533_det0000",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: SUPERGUN at 92 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c21327_r13637_det0000",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: CATALINA JET at 110 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c24015_r14533_det0000",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c23119_r17221_det0009",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: MSC ROSA M at 147 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c24015_r17221_det0018",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: KRISTINA at 412 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c24911_r17221_det0001",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: CAST-AWAY 8 at 1172 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c20431_r14533_det0000",
+      "label": "ARTIFACT",
+      "note": "Oversized detection (685 m x 1666 m); likely azimuth ambiguity or wind streak"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c23119_r17221_det0010",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: ONE MANHATTAN at 622 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c20431_r14533_det0001",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: ECLIPSE at 1337 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c21327_r17221_det0004",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: DISAPPEARANCE at 110 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c23119_r18117_det0004",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: MSC ROSA M at 333 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c23119_r15429_det0000",
+      "label": "ARTIFACT",
+      "note": "Oversized detection (83 m x 569 m); likely azimuth ambiguity or wind streak"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c21327_r18117_det0001",
+      "label": "ARTIFACT",
+      "note": "Oversized detection (355 m x 626 m); likely azimuth ambiguity or wind streak"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c23119_r16325_det0000",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c23119_r14533_det0003",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: CARNIVAL RADIANCE at 939 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c21327_r18117_det0001",
+      "label": "ARTIFACT",
+      "note": "Oversized detection (1643 m x 1912 m); likely azimuth ambiguity or wind streak"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c20431_r14533_det0000",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: KEELDRAGGER at 1083 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c23119_r18117_det0005",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: MOL COMPETENCE at 862 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c23119_r17221_det0012",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: PRESIDENT EISENHOWER at 159 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c21327_r17221_det0005",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: CHRISTOPHER at 1182 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c23119_r18117_det0003",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: MSC ROSA M at 915 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c21327_r18117_det0002",
+      "label": "ARTIFACT",
+      "note": "Oversized detection (1146 m x 1665 m); likely azimuth ambiguity or wind streak"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c21327_r18117_det0003",
+      "label": "ARTIFACT",
+      "note": "Oversized detection (790 m x 883 m); likely azimuth ambiguity or wind streak"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c22223_r17221_det0002",
+      "label": "ARTIFACT",
+      "note": "Oversized detection (1025 m x 955 m); likely azimuth ambiguity or wind streak"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c24015_r18117_det0001",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: COSHONOUR LAKE at 710 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c23119_r18117_det0006",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: GO BEYOND at 53 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c21327_r17221_det0006",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: CHRISTOPHER at 326 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c20431_r14533_det0002",
+      "label": "ARTIFACT",
+      "note": "Oversized detection (640 m x 1954 m); likely azimuth ambiguity or wind streak"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c23119_r17221_det0013",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: ASTRAL at 1356 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c23119_r18117_det0007",
+      "label": "ARTIFACT",
+      "note": "Oversized detection (469 m x 1594 m); likely azimuth ambiguity or wind streak"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c24015_r17221_det0020",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: CAST-AWAY 8 at 1161 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c21327_r18117_det0002",
+      "label": "ARTIFACT",
+      "note": "Oversized detection (399 m x 849 m); likely azimuth ambiguity or wind streak"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c23119_r18117_det0008",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: DELTA BILLIE at 268 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c23119_r17221_det0015",
+      "label": "DARK",
+      "note": "No AIS within gate, no platform within 200 m, plausible vessel dimensions"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c23119_r18117_det0009",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: GEORGE III at 675 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c23119_r17221_det0013",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: SEANA C at 358 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c23119_r17221_det0014",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: CSCL EAST CHINA SEA at 589 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c21327_r14533_det0000",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: SATORI at 508 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c23119_r18117_det0010",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: ELIZABETH C at 685 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vh_c24015_r16325_det0002",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: TRIUMPHANT at 220 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c20431_r14533_det0002",
+      "label": "ARTIFACT",
+      "note": "Oversized detection (1097 m x 541 m); likely azimuth ambiguity or wind streak"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c23119_r18117_det0011",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: FEDERAL LYRA at 296 m"
+    },
+    {
+      "contact_id": "S1A_IW_GRDH_1SDV_20240706T015825_20240706T015854_054634_06A693_4441_vv_c24015_r17221_det0019",
+      "label": "CLEAR",
+      "note": "AIS association inside gate: JANICE MARIE at 36 m"
+    }
+  ]
+}

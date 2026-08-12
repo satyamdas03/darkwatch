@@ -84,7 +84,7 @@ def process_scene(
     conf: Annotated[float, typer.Option(help="Detector confidence threshold")] = 0.05,
     ais_time_window: Annotated[int, typer.Option(help="AIS window +/- minutes around SAR time")] = 120,
     output_base: Annotated[str, typer.Option(help="Base output directory")] = "data/processed",
-    theater: Annotated[str | None, typer.Option(help="Static-object catalog theater")] = None,
+    theater: Annotated[str | None, typer.Option(help="Static-object catalog theater (santa_barbara, gulf, southern_california)")] = None,
     skip_download: Annotated[bool, typer.Option(help="Skip SAR download if already present")] = False,
     skip_ais: Annotated[bool, typer.Option(help="Skip NOAA AIS fetch")] = False,
     skip_fuse: Annotated[bool, typer.Option(help="Skip fusion step")] = False,

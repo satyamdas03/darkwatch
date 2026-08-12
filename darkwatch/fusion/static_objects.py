@@ -147,6 +147,10 @@ def _platforms_gulf_of_mexico(cache_path: Path | str | None = None) -> list[Stat
 THEATERS = {
     "santa_barbara": _platforms_santa_barbara_channel,
     "santa_barbara_channel": _platforms_santa_barbara_channel,
+    "southern_california": _platforms_santa_barbara_channel,
+    "southern_california_bight": _platforms_santa_barbara_channel,
+    "socal": _platforms_santa_barbara_channel,
+    "scb": _platforms_santa_barbara_channel,
     "gulf": _platforms_gulf_of_mexico,
     "gulf_of_mexico": _platforms_gulf_of_mexico,
 }
@@ -157,9 +161,10 @@ def default_static_objects(theater: str | None = None) -> list[StaticObject]:
 
     Args:
         theater: Theater name. Supported values: ``santa_barbara``,
-            ``santa_barbara_channel``, ``gulf``, ``gulf_of_mexico``. If
-            ``None`` or unrecognized, defaults to Santa Barbara for backward
-            compatibility.
+            ``santa_barbara_channel``, ``southern_california``,
+            ``southern_california_bight``, ``socal``, ``scb``, ``gulf``,
+            ``gulf_of_mexico``. If ``None`` or unrecognized, defaults to Santa
+            Barbara for backward compatibility.
     """
     if theater is None:
         return _platforms_santa_barbara_channel()
