@@ -31,6 +31,11 @@ def _synthetic_geocoder() -> S1Geocoder:
     lats = 34.0 + lines * (0.5 / 499)
     lons = -120.0 + pixels * (0.5 / 499)
 
+    grid = np.array(
+        list(zip(lines.astype(int), pixels.astype(int), lats, lons, np.zeros_like(lats))),
+        dtype=[("line", int), ("pixel", int), ("lat", float), ("lon", float), ("height", float)],
+    )
+
     interp_line = LinearNDInterpolator(np.column_stack((lats, lons)), lines)
     interp_pixel = LinearNDInterpolator(np.column_stack((lats, lons)), pixels)
     interp_lat = LinearNDInterpolator(np.column_stack((lines, pixels)), lats)
@@ -42,6 +47,7 @@ def _synthetic_geocoder() -> S1Geocoder:
         interp_lat=interp_lat,
         interp_lon=interp_lon,
         full_shape=full_shape,
+        grid=grid,
     )
 
 

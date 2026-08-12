@@ -45,9 +45,21 @@ def _operational_overlap(footprint_geojson: dict, operational_bbox: tuple[float,
     return inter.area / op_poly.area
 
 
-def _footprint_water_fraction(footprint_geojson: dict, land: shapely.Geometry, samples: int = 200) -> float:
-    """Estimate water fraction inside a footprint by sampling points."""
+def _footprint_water_fraction(
+    footprint_geojson: dict,
+    land: shapely.Geometry,
+    samples: int = 200,
+    clip_bbox: tuple[float, float, float, float] | None = None,
+) -> float:
+    """Estimate water fraction inside a footprint (optionally clipped to a bbox).
+
+    If ``clip_bbox`` is supplied, samples are restricted to the intersection of
+    the footprint and the bbox, so the returned fraction reflects the usable
+    operational area rather than the whole swath.
+    """
     geom = shapely.geometry.shape(footprint_geojson)
+    if clip_bbox is not None:
+        geom = geom.intersection(_bbox_to_polygon(clip_bbox))
     bounds = geom.bounds
     if not bounds or bounds[2] <= bounds[0] or bounds[3] <= bounds[1]:
         return 0.0
@@ -71,10 +83,28 @@ def main() -> int:
     parser.add_argument("--end", type=str, default=None)
     parser.add_argument("--max-results", type=int, default=50)
     parser.add_argument(
+        "--min-overlap",
+        type=float,
+        default=0.75,
+        help="Minimum fraction of the operational bbox that must be covered (default 0.75)",
+    )
+    parser.add_argument(
         "--operational-bbox",
         type=str,
         default=None,
         help="Target theater bbox as W,S,E,N; scenes are scored by overlap with this bbox",
+    )
+    parser.add_argument(
+        "--search-bbox",
+        type=str,
+        default=None,
+        help="CDSE search bbox as W,S,E,N; defaults to the Santa Barbara search region",
+    )
+    parser.add_argument(
+        "--theater-name",
+        type=str,
+        default=None,
+        help="Optional tag added to the output JSON for the theater being scored",
     )
     parser.add_argument("--output", type=str, default=str(REPO_ROOT / "data" / "raw" / "s1" / "scene_scores.json"))
     args = parser.parse_args()
@@ -92,10 +122,18 @@ def main() -> int:
     if end.tzinfo is None:
         end = end.replace(tzinfo=timezone.utc)
 
+    search_bbox = SANTA_BARBARA_BBOX
+    if args.search_bbox:
+        parts = [float(x.strip()) for x in args.search_bbox.split(",")]
+        if len(parts) != 4:
+            raise ValueError("--search-bbox must be W,S,E,N")
+        search_bbox = tuple(parts)
+
     adapter = CopernicusAdapter(username=username, password=password)
-    print(f"Searching CDSE over {SANTA_BARBARA_BBOX} from {start.date()} to {end.date()} ...")
+    theater_tag = f" ({args.theater_name})" if args.theater_name else ""
+    print(f"Searching CDSE{theater_tag} over {search_bbox} from {start.date()} to {end.date()} ...")
     products = adapter.search(
-        bbox=SANTA_BARBARA_BBOX,
+        bbox=search_bbox,
         start=start,
         end=end,
         product_type="IW_GRDH_1S",
@@ -117,10 +155,17 @@ def main() -> int:
     land = NaturalEarthLand().get_land_union()
 
     scores = []
+    skipped = 0
     for p in products:
-        water_frac = _footprint_water_fraction(p.footprint, land, samples=400)
         op_overlap = _operational_overlap(p.footprint, operational_bbox)
-        # Combined score: prioritize scenes that cover the operational area with open water.
+        if op_overlap < args.min_overlap:
+            skipped += 1
+            continue
+        # Water fraction within the part of the operational bbox actually covered.
+        water_frac = _footprint_water_fraction(
+            p.footprint, land, samples=400, clip_bbox=operational_bbox
+        )
+        # Combined score: fraction of the operational bbox that is covered by water.
         score = water_frac * op_overlap
         scores.append({
             "id": p.product_id,
@@ -131,8 +176,18 @@ def main() -> int:
             "combined_score": round(score, 4),
             "footprint": p.footprint,
             "download_url": p.download_url,
+            "theater_name": args.theater_name,
+            "search_bbox": search_bbox,
+            "operational_bbox": operational_bbox,
         })
         print(f"  {score:.2%} combined  {water_frac:.2%} water  {op_overlap:.2%} overlap  {p.name}")
+
+    if skipped:
+        print(f"  (skipped {skipped} scenes with overlap < {args.min_overlap:.0%})")
+
+    if not scores:
+        print("No scenes meet the minimum overlap requirement.", file=sys.stderr)
+        return 1
 
     scores.sort(key=lambda x: x["combined_score"], reverse=True)
     out_path = Path(args.output)

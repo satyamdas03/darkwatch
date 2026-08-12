@@ -8,14 +8,23 @@ control points.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Iterable
 
 import numpy as np
+import shapely
 from scipy.interpolate import LinearNDInterpolator
 
 from .reader import read_geolocation_grid
+
+
+def _bbox_to_polygon(bbox: tuple[float, float, float, float]) -> shapely.Geometry:
+    """Turn W,S,E,N bbox into a shapely polygon."""
+    minx, miny, maxx, maxy = bbox
+    return shapely.geometry.Polygon(
+        [(minx, miny), (maxx, miny), (maxx, maxy), (minx, maxy), (minx, miny)]
+    )
 
 
 @dataclass(frozen=True)
@@ -27,6 +36,8 @@ class S1Geocoder:
     interp_lat: LinearNDInterpolator
     interp_lon: LinearNDInterpolator
     full_shape: tuple[int, int]
+    grid: np.ndarray
+    _image_extent_poly: shapely.Geometry | None = field(default=None, init=False, repr=False)
 
     def lonlat_to_pixel(self, lon: float, lat: float) -> tuple[float, float]:
         """Convert a single WGS84 coordinate to (line, pixel)."""
@@ -40,6 +51,20 @@ class S1Geocoder:
         lat = self.interp_lat([[line, pixel]])[0]
         return float(lon), float(lat)
 
+    def image_extent_polygon(self) -> shapely.Geometry:
+        """Return the geographic extent of the full image as a shapely polygon.
+
+        This uses the convex hull of the sparse geolocation grid points, which
+        is guaranteed to be a valid polygon and safely bounds the image.
+        """
+        if self._image_extent_poly is None:
+            lons = self.grid["lon"].astype(float)
+            lats = self.grid["lat"].astype(float)
+            pts = shapely.multipoints(np.column_stack((lons, lats)))
+            hull = shapely.convex_hull(pts)
+            object.__setattr__(self, "_image_extent_poly", hull)
+        return self._image_extent_poly  # type: ignore[return-value]
+
     def bbox_to_window(
         self,
         bbox: tuple[float, float, float, float],
@@ -47,18 +72,32 @@ class S1Geocoder:
     ) -> tuple[int, int, int, int]:
         """Convert WGS84 bbox (W, S, E, N) to pixel window (min_x, min_y, width, height).
 
-        The returned window is clipped to the image bounds.
+        If the requested bbox extends outside the scene footprint, the returned
+        window is clipped to the covered portion so the caller still gets the
+        largest usable sub-image instead of a collapsed single-pixel window.
         """
         min_lon, min_lat, max_lon, max_lat = bbox
-        corners = np.array(
-            [
-                [min_lat, min_lon],
-                [min_lat, max_lon],
-                [max_lat, min_lon],
-                [max_lat, max_lon],
-            ],
-            dtype=np.float64,
-        )
+        bbox_poly = _bbox_to_polygon(bbox)
+        extent_poly = self.image_extent_polygon()
+
+        inter = bbox_poly.intersection(extent_poly)
+        if inter.is_empty:
+            raise ValueError(f"Bbox {bbox} does not intersect the scene footprint.")
+
+        # Collect all vertices of the covered portion. For a polygon/polygon
+        # intersection this may be a polygon or multi-polygon.
+        xy = []
+        for geom in getattr(inter, "geoms", [inter]):
+            if hasattr(geom, "exterior"):
+                xy.extend(geom.exterior.coords[:-1])  # omit duplicate closing point
+
+        if not xy:
+            raise ValueError(f"Bbox {bbox} intersection with scene footprint is degenerate.")
+
+        pts = np.array(xy, dtype=np.float64)
+        lats = pts[:, 1]
+        lons = pts[:, 0]
+        corners = np.column_stack((lats, lons))
         lines = self.interp_line(corners)
         pixels = self.interp_pixel(corners)
 
@@ -125,4 +164,5 @@ def build_geocoder(annotation_xml: Path, full_shape: tuple[int, int]) -> S1Geoco
         interp_lat=interp_lat,
         interp_lon=interp_lon,
         full_shape=full_shape,
+        grid=grid,
     )
