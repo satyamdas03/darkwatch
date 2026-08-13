@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
+import uvicorn
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -185,9 +186,13 @@ def serve(
         typer.Option(help="Root directory containing processed scenes"),
     ] = REPO_ROOT / "data" / "processed",
 ) -> None:
-    """Launch the analyst web dashboard (placeholder — backend under construction)."""
-    typer.echo(f"Dashboard server not yet implemented; would serve from {data_dir} on {host}:{port}")
-    raise typer.Exit(code=1)
+    """Launch the analyst web dashboard."""
+    sys.path.insert(0, str(REPO_ROOT))
+    from darkwatch.dashboard.api import create_app
+
+    app = create_app(data_dir=data_dir)
+    typer.echo(f"Starting Darkwatch dashboard at http://{host}:{port}")
+    uvicorn.run(app, host=host, port=port)
 
 
 def main() -> None:

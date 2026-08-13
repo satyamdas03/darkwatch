@@ -14,9 +14,9 @@
 | **Tagline** | A radar contact with no transponder is either noise, a rig, a mismatch — or a ship that chose to disappear. Darkwatch decides which, and says how sure it is. |
 | **Goal** | Build a maritime surveillance system that detects vessels that have deliberately switched off AIS, by fusing free Sentinel-1 SAR imagery with AIS broadcasts, and produces calibrated, auditable dark-vessel verdicts. |
 | **Mode** | Impact-first, funding-agnostic, single-consumer-GPU research/engineering build. |
-| **Status** | Phase 2 — Vessel Detection baseline COMPLETE; Session #7 COMPLETE: SSDD→GRD domain gap closed. Mixed YOLOv8n detector `darkwatch_yolov8n_ssdd_grd_v4` trained from corrected weak-positive chips and validated; July 23 weak-target recall regression fixed (both known DARK vessels recovered). Phase 3 Fusion & Attribution baseline COMPLETE: static-object exclusion + four real scenes fused, calibration framework + interactive maps. Session #12 COMPLETE: physical-plausibility AIS gate implemented and tuned, learned per-class Platt calibration layer fitted, 46-label recal3 dataset locked. Session #13 COMPLETE: calibration dataset expanded to 122 labels across Santa Barbara + Gulf of Mexico; cross-theater validation reveals Santa-Barbara-only calibration overfit; combined cross-theater model selected as default. Session #13.5 COMPLETE: BOEM/BSEE Gulf of Mexico platform catalog integrated into static-object exclusion; `--theater` flag added to fusion CLI. Session #14 COMPLETE: Southern California Bight third-theater validation unblocked and processed; theater-aware calibration registry added; SCB-specific calibration model fitted and selected automatically for SCB scenes; dashboard Phase D next. |
+| **Status** | Phase 2 — Vessel Detection baseline COMPLETE; Session #7 COMPLETE: SSDD→GRD domain gap closed. Mixed YOLOv8n detector `darkwatch_yolov8n_ssdd_grd_v4` trained from corrected weak-positive chips and validated; July 23 weak-target recall regression fixed (both known DARK vessels recovered). Phase 3 Fusion & Attribution baseline COMPLETE: static-object exclusion + four real scenes fused, calibration framework + interactive maps. Session #12 COMPLETE: physical-plausibility AIS gate implemented and tuned, learned per-class Platt calibration layer fitted, 46-label recal3 dataset locked. Session #13 COMPLETE: calibration dataset expanded to 122 labels across Santa Barbara + Gulf of Mexico; cross-theater validation reveals Santa-Barbara-only calibration overfit; combined cross-theater model selected as default. Session #13.5 COMPLETE: BOEM/BSEE Gulf of Mexico platform catalog integrated into static-object exclusion; `--theater` flag added to fusion CLI. Session #14 COMPLETE: Southern California Bight third-theater validation unblocked and processed; theater-aware calibration registry + SCB-specific model; unified CLI; analyst web dashboard MVP live via `darkwatch serve`. |
 | **Start Date** | 2026-08-04 |
-| **Last Updated** | 2026-08-13 (Session #14: SCB 2024-07-06 end-to-end with 108 contacts / 665 AIS tracks; theater-aware calibration registry + SCB-specific model; unified CLI; all tests pass) |
+| **Last Updated** | 2026-08-13 (Session #14: SCB 2024-07-06 end-to-end; theater-aware calibration; dashboard MVP; 28/28 tests pass) |
 | **Current Branch** | main |
 | **Git Remote** | `https://github.com/satyamdas03/darkwatch` (public, pushed 2026-08-04) |
 | **Lead Engineer** | Bull (Claude Code agent) |
@@ -863,13 +863,23 @@ darkwatch/
   - Updated `scripts/fuse_contacts.py` and `scripts/process_scene.py` so `--theater` auto-selects the right default calibration model; explicit `--calibration-model` still overrides.
   - Fitted `data/processed/fusion_calibration_v4_adaptive_socal.json` on 108 SCB labels (Platt params: artifact scale=0.978/shift=-0.189, clear scale=1.175/shift=0.258, dark scale=1.163/shift=-0.232, review scale=1.148/shift=-0.095).
   - Re-fused 2024-07-06 with theater-aware SCB calibration: CLEAR 61 / ARTIFACT 28 / DARK 15 / REVIEW 4 (6 REVIEW → CLEAR, 3 REVIEW → ARTIFACT vs raw).
+- **Completed (Phase D — analyst web dashboard MVP):**
+  - Added `darkwatch/dashboard/` package with FastAPI backend (`api.py`, `scanner.py`) and static frontend (`frontend/index.html`, `styles.css`, `app.js`).
+  - Backend scans `data/processed` for `verdicts.json` + `summary.json`, serves scene list, scene detail, and embedded Folium maps.
+  - Frontend: deep-ocean slate palette (#0B1B2B), warning amber DARK, clear green CLEAR, gray ARTIFACT, blue REVIEW, Saira Condensed headers, Inter body, JetBrains Mono data.
+  - Signature "Verdict Dial": SVG circular gauge on each alert card showing the four-component probability split.
+  - Layout: topbar scene selector, filter pills (All / Dark / Clear / Artifact / Review), ranked alert cards, right rail with embedded map + evidence dossier panel.
+  - Evidence panel: contact geometry, AIS context (nearest MMSI, distance, P(match)), static object, and full reasoning trail.
+  - `darkwatch serve` launches uvicorn on `127.0.0.1:8050` by default.
+  - Added `tests/test_dashboard.py` covering health, scene list, scene detail, missing scene, and HTML root endpoints.
 - **Completed (Phase E — unified CLI):**
   - Added `darkwatch/cli.py` with Typer subcommands: `search-scenes`, `process-scene`, `build-labels`, `fit-calibration`, `evaluate`, `serve`.
   - Registered `darkwatch` console entry point in `pyproject.toml`.
-  - All unit tests still pass (`pytest tests/ -q` → 23 passed).
+  - All unit tests pass (`pytest tests/ -q` → 28 passed).
 - **Next action:**
-  - Begin Phase D — analyst web dashboard: FastAPI backend + static HTML/JS frontend, deep-ocean slate palette, Verdict Dial, contact list with filters, scene map, evidence dossier panel.
-  - Continue curating a manually reviewed ~20-contact SCB subset to refine calibration; auto-labels remain the proxy until manual review is complete.
+  - Manual SCB label curation: review ~20 high-confidence contacts from `notebooks/contact_viz_20240706_v4_adaptive/` to replace auto-labels with audited ground truth.
+  - Dashboard hardening: add contact thumbnails, contact click-to-center on map, CSV export, persistence across repeat passes, MPA/EEZ zone overlays.
+  - Begin Phase F/G operational context layer and scheduled monitoring.
 
 ---
 
