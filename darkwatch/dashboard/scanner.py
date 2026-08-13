@@ -8,6 +8,7 @@ attached opportunistically.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -55,8 +56,6 @@ def _load_json(path: Path) -> Any:
 
 def _find_map_html(scene_path: Path, scene_id: str) -> Path | None:
     """Look for a generated Folium map near the scene or in notebooks/."""
-    import re
-
     candidates = [
         scene_path / "map.html",
         scene_path / f"{scene_id}_map.html",
@@ -72,6 +71,34 @@ def _find_map_html(scene_path: Path, scene_id: str) -> Path | None:
     for candidate in candidates:
         if candidate.exists():
             return candidate
+    return None
+
+
+def _contact_date(contact_id: str) -> str | None:
+    """Extract YYYYMMDD acquisition date from a Sentinel-1 contact id."""
+    import re
+
+    m = re.search(r"_(\d{8})T\d{6}_", contact_id)
+    if m:
+        return m.group(1)
+    return None
+
+
+def find_contact_thumbnail(contact_id: str) -> Path | None:
+    """Return the zoom review-grid PNG path for a contact, if available."""
+    date = _contact_date(contact_id)
+    if not date:
+        return None
+    thumb_dir = REPO_ROOT / "notebooks" / f"contact_viz_{date}_v4_adaptive"
+    if not thumb_dir.exists():
+        return None
+    # Zoomed chip is the analyst-friendly view.
+    zoom_candidate = thumb_dir / f"{contact_id}_zoom.png"
+    if zoom_candidate.exists():
+        return zoom_candidate
+    full_candidate = thumb_dir / f"{contact_id}.png"
+    if full_candidate.exists():
+        return full_candidate
     return None
 
 
@@ -93,6 +120,15 @@ def scan_scenes(data_dir: Path = DEFAULT_DATA_DIR) -> list[Scene]:
         scene.verdicts = _load_json(verdicts_path) or []
         scene.summary = _load_json(summary_path) or {}
         scene.contacts = _load_json(entry / "contacts.json") or []
+        if not scene.contacts:
+            # Contacts are usually stored in the detections_YYYYMMDD directory.
+            m = re.search(r"(\d{8})", entry.name)
+            if m:
+                detections_dir = (
+                    REPO_ROOT / "data" / "processed" / f"detections_{m.group(1)}_v4_adaptive"
+                )
+                if detections_dir.exists():
+                    scene.contacts = _load_json(detections_dir / "contacts.json") or []
 
         map_path = _find_map_html(entry, entry.name)
         if map_path:

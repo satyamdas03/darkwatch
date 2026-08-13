@@ -865,17 +865,17 @@ darkwatch/
   - Re-fused 2024-07-06 with theater-aware SCB calibration: CLEAR 61 / ARTIFACT 28 / DARK 15 / REVIEW 4 (6 REVIEW → CLEAR, 3 REVIEW → ARTIFACT vs raw).
 - **Completed (Phase D — analyst web dashboard MVP):**
   - Added `darkwatch/dashboard/` package with FastAPI backend (`api.py`, `scanner.py`) and static frontend (`frontend/index.html`, `styles.css`, `app.js`).
-  - Backend scans `data/processed` for `verdicts.json` + `summary.json`, serves scene list, scene detail, and embedded Folium maps.
+  - Backend scans `data/processed` for `verdicts.json` + `summary.json`, serves scene list, scene detail, embedded Folium maps, contact review-grid thumbnails, and CSV export.
   - Frontend: deep-ocean slate palette (#0B1B2B), warning amber DARK, clear green CLEAR, gray ARTIFACT, blue REVIEW, Saira Condensed headers, Inter body, JetBrains Mono data.
   - Signature "Verdict Dial": SVG circular gauge on each alert card showing the four-component probability split.
-  - Layout: topbar scene selector, filter pills (All / Dark / Clear / Artifact / Review), ranked alert cards, right rail with embedded map + evidence dossier panel.
+  - Layout: topbar scene selector, filter pills (All / Dark / Clear / Artifact / Review), ranked alert cards with thumbnails, right rail with embedded map + evidence dossier panel, Export CSV button.
   - Evidence panel: contact geometry, AIS context (nearest MMSI, distance, P(match)), static object, and full reasoning trail.
   - `darkwatch serve` launches uvicorn on `127.0.0.1:8050` by default.
-  - Added `tests/test_dashboard.py` covering health, scene list, scene detail, missing scene, and HTML root endpoints.
+  - Added `tests/test_dashboard.py` covering health, scene list, scene detail, missing scene, HTML root, thumbnail, and CSV export endpoints.
 - **Completed (Phase E — unified CLI):**
   - Added `darkwatch/cli.py` with Typer subcommands: `search-scenes`, `process-scene`, `build-labels`, `fit-calibration`, `evaluate`, `serve`.
   - Registered `darkwatch` console entry point in `pyproject.toml`.
-  - All unit tests pass (`pytest tests/ -q` → 28 passed).
+  - All unit tests pass (`pytest tests/ -q` → 30 passed).
 - **Next action:**
   - Manual SCB label curation: review ~20 high-confidence contacts from `notebooks/contact_viz_20240706_v4_adaptive/` to replace auto-labels with audited ground truth.
   - Dashboard hardening: add contact thumbnails, contact click-to-center on map, CSV export, persistence across repeat passes, MPA/EEZ zone overlays.

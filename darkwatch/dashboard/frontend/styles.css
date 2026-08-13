@@ -140,6 +140,11 @@ body {
   border-color: var(--accent);
 }
 
+a.filter-pill {
+  text-decoration: none;
+  display: inline-block;
+}
+
 .stats {
   display: flex;
   gap: 1rem;
@@ -222,11 +227,20 @@ body {
   border-radius: 0.5rem;
   padding: 0.85rem;
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: 4rem auto 1fr auto;
   gap: 0.85rem;
   align-items: center;
   cursor: pointer;
   transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.card-thumb {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 0.375rem;
+  object-fit: cover;
+  background: var(--bg);
+  border: 1px solid var(--border);
 }
 
 .alert-card:hover {

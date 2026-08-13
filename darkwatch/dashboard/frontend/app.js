@@ -112,9 +112,12 @@ function renderAlertList(scene) {
       const cardId = escapeHtml(shortId(v.contact_id));
       const staticName = v.static_object ? escapeHtml(v.static_object.name) : "—";
       const reason = escapeHtml(v.reasoning || "No reasoning recorded.");
+      const thumbUrl = `/api/scenes/${encodeURIComponent(currentScene.scene_id)}/contacts/${encodeURIComponent(v.contact_id)}/thumbnail`;
       return `
       <article class="alert-card verdict-${v.verdict.toLowerCase()} ${selected}"
                data-id="${escapeHtml(v.contact_id)}" role="button" tabindex="0">
+        <img class="card-thumb" src="${thumbUrl}" alt="" loading="lazy"
+             onerror="this.style.visibility='hidden'" />
         <div class="dial-wrap">${verdictDial(v)}</div>
         <div class="card-main">
           <div class="card-title">
@@ -252,6 +255,9 @@ function loadScene(sceneId) {
 
   const mapFrame = document.getElementById("map-frame");
   mapFrame.src = `/api/scenes/${encodeURIComponent(sceneId)}/map`;
+
+  const exportLink = document.getElementById("export-csv");
+  exportLink.href = `/api/scenes/${encodeURIComponent(sceneId)}/export.csv`;
 }
 
 async function init() {

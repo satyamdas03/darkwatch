@@ -9,11 +9,19 @@ import pytest
 from fastapi.testclient import TestClient
 
 from darkwatch.dashboard.api import create_app
+from darkwatch.dashboard.scanner import REPO_ROOT
 
 
 @pytest.fixture
-def mock_processed_dir(tmp_path: Path) -> Path:
-    """Create a minimal processed scene with verdicts, summary, contacts."""
+def mock_processed_dir(tmp_path: Path, monkeypatch) -> Path:
+    """Create a minimal processed scene with verdicts, summary, contacts.
+
+    Also repoints REPO_ROOT to tmp_path so notebook-derived paths resolve
+    inside the fixture.
+    """
+    monkeypatch.setattr("darkwatch.dashboard.scanner.REPO_ROOT", tmp_path)
+    monkeypatch.setattr("darkwatch.dashboard.api.REPO_ROOT", tmp_path)
+
     scene_dir = tmp_path / "test_scene_20240101_v4_adaptive"
     scene_dir.mkdir()
 
@@ -53,6 +61,12 @@ def mock_processed_dir(tmp_path: Path) -> Path:
     (scene_dir / "verdicts.json").write_text(json.dumps(verdicts))
     (scene_dir / "summary.json").write_text(json.dumps(summary))
     (scene_dir / "contacts.json").write_text(json.dumps(contacts))
+
+    # Create a fake review-grid thumbnail for the thumbnail endpoint test.
+    thumb_dir = tmp_path / "notebooks" / "contact_viz_20240101_v4_adaptive"
+    thumb_dir.mkdir(parents=True)
+    (thumb_dir / "S1A_IW_GRDH_1SDV_20240101T000000_000000_000000_0000_vv_c100_r100_det0000_zoom.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+
     return tmp_path
 
 
@@ -100,3 +114,23 @@ def test_root_serves_dashboard(mock_processed_dir: Path) -> None:
     resp = client.get("/")
     assert resp.status_code == 200
     assert "Darkwatch" in resp.text
+
+
+def test_contact_thumbnail(mock_processed_dir: Path) -> None:
+    app = create_app(data_dir=mock_processed_dir)
+    client = TestClient(app)
+    cid = "S1A_IW_GRDH_1SDV_20240101T000000_000000_000000_0000_vv_c100_r100_det0000"
+    resp = client.get(f"/api/scenes/test_scene_20240101_v4_adaptive/contacts/{cid}/thumbnail")
+    assert resp.status_code == 200
+    assert resp.headers["content-type"] == "image/png"
+
+
+def test_export_csv(mock_processed_dir: Path) -> None:
+    app = create_app(data_dir=mock_processed_dir)
+    client = TestClient(app)
+    resp = client.get("/api/scenes/test_scene_20240101_v4_adaptive/export.csv")
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("text/csv")
+    body = resp.content.decode("utf-8")
+    assert "contact_id,verdict,p_artifact" in body
+    assert "DARK" in body

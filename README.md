@@ -270,7 +270,7 @@ Darkwatch is built to be **honest about uncertainty**, not just confident.
 darkwatch serve
 ```
 
-The dashboard auto-discovers processed scenes under `data/processed`, ranks contacts by actionable verdict (DARK → REVIEW → CLEAR → ARTIFACT), and embeds the generated Folium map for the selected scene. Each alert card shows the four-component **Verdict Dial**, and the right-side evidence panel displays contact geometry, AIS context, static-object hits, and the full reasoning trail.
+The dashboard auto-discovers processed scenes under `data/processed`, ranks contacts by actionable verdict (DARK → REVIEW → CLEAR → ARTIFACT), embeds the generated Folium map, shows a SAR review-grid thumbnail on each alert card, and offers a one-click **Export CSV** of all verdicts. The right-side evidence panel displays contact geometry, AIS context, static-object hits, and the full reasoning trail.
 
 Latest combined calibration metrics (122 labels, in-sample after gate + calibration):
 
