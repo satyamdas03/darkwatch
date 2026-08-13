@@ -43,6 +43,9 @@ This is both a real-world surveillance system and a research problem in probabil
 | Static objects | None | **Oil-platform / rig exclusion** shifts fixed-structure contacts to `ARTIFACT` |
 | AIS-match gate | None | **Physical-plausibility gate** rejects oversized SAR contacts falsely matched to small cooperative vessels |
 | Coverage gaps | None | Explicit adjustment when no AIS exists within 2× the gate |
+| Zone context | None | **NOAA MPA / maritime zone overlays** tag contacts inside protected or regulated areas |
+| Persistence | None | **Cross-scene clustering** flags contacts that reappear within 500 m across repeat passes |
+| Analyst UI | GIS desktop + scripts | **Web dashboard** (`darkwatch serve`) with Verdict Dial, thumbnails, map, CSV export |
 | Evidence | Silent | Every verdict carries a **reasoning trail**, nearest-track metadata, and interactive map |
 | Cost | Enterprise AIS feeds + cloud GPUs | Free/open data + **single consumer GPU** (RTX 5060 8 GB) |
 
@@ -158,6 +161,22 @@ The Gulf static-object catalog (BOEM/BSEE platforms) was added in Session #13.5 
 Report: [`fusion_20240708_report.md`](notebooks/fusion_20240708_report.md)  
 Map: [`fusion_20240708_map.html`](notebooks/fusion_20240708_map.html)
 
+### 2024-07-06: Southern California Bight third-theater validation
+
+A descending pass over the Southern California Bight (`-118.5,33.3,-117.5,34.0`) tested cross-theater transfer after a geocoder fix that intersects the theater bbox with the scene footprint convex hull. The scene produced **108 contacts** against **665 AIS tracks**:
+
+| Verdict (raw) | Count | Notes |
+|---|---|---|
+| **CLEAR** | 58 | Cooperative vessels matched within gate |
+| **REVIEW** | 10 | Ambiguous: distant AIS or weak contacts |
+| **DARK** | 15 | No AIS within gate, no platform nearby |
+| **ARTIFACT** | 25 | Platform-adjacent or oversized sea-surface patches |
+
+The combined 122-label cross-theater calibration model improved DARK Brier on SCB but degraded CLEAR/ARTIFACT, confirming imperfect transfer. A **theater-aware SCB-specific calibration model** was fitted on the 108 auto-labeled contacts. With `--theater southern_california`, the SCB model shifts 6 REVIEW→CLEAR and 3 REVIEW→ARTIFACT and lowers DARK Brier to **0.0577**.
+
+Reports: [`fusion_20240706_report.md`](notebooks/fusion_20240706_report.md) · [`fusion_20240706_socal_cal_report.md`](notebooks/fusion_20240706_socal_cal_report.md)  
+Maps: [`fusion_20240706_map.html`](notebooks/fusion_20240706_map.html) · [`fusion_20240706_socal_cal_map.html`](notebooks/fusion_20240706_socal_cal_map.html)
+
 ---
 
 ## 🚀 Quick Start
@@ -248,6 +267,28 @@ python scripts/fusion_report.py \
 
 ---
 
+## 🖥️ Analyst Dashboard
+
+Launch the dashboard with one command:
+
+```bash
+darkwatch serve
+```
+
+Then open `http://127.0.0.1:8050`. The dashboard auto-discovers processed scenes under `data/processed` and presents a ranked alert feed built for maritime analysts.
+
+| Feature | What it does |
+|---|---|
+| **Verdict Dial** | SVG circular gauge on each alert card showing the four-component probability split (DARK / REVIEW / CLEAR / ARTIFACT). |
+| **Ranked alert cards** | Contacts sorted by actionable verdict: DARK → REVIEW → CLEAR → ARTIFACT; each card shows a SAR review-grid thumbnail, contact geometry, and one-line reasoning. |
+| **Embedded map** | Folium map for the selected scene with SAR contacts colored by verdict and AIS tracks. |
+| **Evidence panel** | Right-side dossier panel with detector confidence, AIS context (nearest MMSI, distance, P(match)), static-object hits, overlapping MPA zones, persistence badge, and the full reasoning trail. |
+| **CSV export** | One-click **Export CSV** of all contacts in the current scene. |
+| **Zone badges** | Contacts inside NOAA MPA / maritime zones are tagged with zone name and protection level. |
+| **Persistence badges** | Contacts that reappear within 500 m across multiple processed scenes show a "Persistent (N scenes)" badge. |
+
+The dashboard is implemented as a FastAPI backend (`darkwatch/dashboard/api.py`, `darkwatch/dashboard/scanner.py`) serving a static HTML/CSS/JS frontend (`darkwatch/dashboard/frontend/`). It is tested in `tests/test_dashboard.py`.
+
 ## 📊 Calibration & Visualization
 
 Darkwatch is built to be **honest about uncertainty**, not just confident.
@@ -263,15 +304,8 @@ Darkwatch is built to be **honest about uncertainty**, not just confident.
 - **`scripts/download_ais_noaa.py`** downloads NOAA daily AIS zip files with resume support.
 - **`scripts/process_scene.py`** is an end-to-end wrapper: S1 download → prep tiles → detect → fetch AIS → fuse → report + map.
 - **`scripts/fetch_zones.py`** downloads MPA / maritime zone GeoJSON for a bbox from the NOAA MPA Inventory.
-- **`darkwatch serve`** launches the analyst web dashboard on `http://127.0.0.1:8050`.
-
-### Launch the analyst dashboard
-
-```bash
-darkwatch serve
-```
-
-The dashboard auto-discovers processed scenes under `data/processed`, ranks contacts by actionable verdict (DARK → REVIEW → CLEAR → ARTIFACT), embeds the generated Folium map, shows a SAR review-grid thumbnail on each alert card, offers a one-click **Export CSV**, displays MPA/zone overlap, and flags **persistent** contacts that reappear within 500 m across multiple processed scenes. The right-side evidence panel also shows contact geometry, AIS context, static-object hits, and the full reasoning trail.
+- **`darkwatch/zones/zones.py`** (`ZoneCatalog`) tags contacts with overlapping zones and protection levels.
+- **`darkwatch/persistence/cluster.py`** runs DBSCAN-style cross-scene persistence clustering and tags contacts with `cluster_id`, `n_scenes`, and `is_persistent`.
 
 Latest combined calibration metrics (122 labels, in-sample after gate + calibration):
 
@@ -329,6 +363,9 @@ darkwatch/
 │   ├── s1_prep/               # Sentinel-1 ingestion & prep
 │   ├── detect/                # Vessel detector + contacts
 │   ├── fusion/                # Probabilistic SAR-to-AIS attribution
+│   ├── dashboard/             # FastAPI backend + static HTML/JS analyst UI
+│   ├── zones/                 # NOAA MPA / maritime zone context layer
+│   ├── persistence/           # Cross-scene contact clustering
 │   ├── behavior/              # Phase 4: context & prioritization
 │   └── alerts/                # Phase 5: evidence dossiers
 ├── scripts/                   # CLI utilities for each pipeline stage
@@ -348,8 +385,11 @@ darkwatch/
 - **scipy** — barycentric SAR geocoding
 - **pandas + numpy** — AIS track interpolation and probability math
 - **pytest** — testing
+- **FastAPI + uvicorn** — analyst dashboard backend
+- **Typer** — unified `darkwatch` CLI
 - **Sentinel-1 (Copernicus Data Space)** — open SAR data
 - **NOAA Marine Cadastre AIS** — public US-government broadcast data
+- **NOAA MPA Inventory** — public maritime protected-area zones
 - **Natural Earth** — public-domain land polygons
 
 ---
@@ -362,13 +402,14 @@ darkwatch/
 | 1 | Automated SAR ingestion & prep | ✅ |
 | 2 | Vessel detection baseline | ✅ Baseline trained; ✅ SSDD→GRD domain-gap closure complete (`darkwatch_yolov8n_ssdd_grd_v4`) |
 | 3 | **Fusion & Attribution** | ✅ Complete: static-object exclusion, physical-plausibility AIS gate, learned per-class Platt calibration, 122 labeled contacts across Santa Barbara + Gulf of Mexico, cross-theater validation, **theater-aware calibration registry**, SCB-specific model |
-| 4 | **Analyst dashboard & behavior context** | 🚧 In progress: deep-ocean slate UI, Verdict Dial, contact list / map / dossier |
-| 5 | Alert & evidence dossiers | ⏳ |
+| 4 | **Analyst dashboard & behavior context** | ✅ MVP complete: `darkwatch serve`, Verdict Dial, thumbnails, CSV export, NOAA MPA zones, cross-scene persistence |
+| 5 | Alert & evidence dossiers | ⏳ Next: ranked alert feed, exportable dossiers |
 
 **Next priorities:**
-1. **Analyst web dashboard (Phase 4/D):** FastAPI backend serving verdicts, static HTML/JS frontend with scene map, contact list with filters, Verdict Dial, and evidence dossier panel.
-2. **Manual SCB label refinement:** review ~20 high-confidence SCB contacts from `notebooks/contact_viz_20240706_v4_adaptive/` to replace auto-labels with audited ground truth.
-3. **Begin Phase 5 behavior context:** integrate public MPA / EEZ / fishing-zone overlays and start persistence tracking across repeat passes.
+1. **Manual SCB label refinement:** review ~20 high-confidence SCB contacts from `notebooks/contact_viz_20240706_v4_adaptive/` to replace auto-labels with audited ground truth.
+2. **Phase 5 evidence dossiers:** automated Markdown/PDF dossier generation per DARK contact with imagery, reasoning, and audit trail.
+3. **Behavior scoring:** add anomaly scoring (zone intrusions, persistent loitering, speed/course anomalies) and a ranked alert feed.
+4. **Additional theater validation:** test the combined calibration model in a fourth theater (e.g., Mediterranean or North Sea) to measure true out-of-sample transfer.
 
 ---
 

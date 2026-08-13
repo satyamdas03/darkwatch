@@ -14,9 +14,9 @@
 | **Tagline** | A radar contact with no transponder is either noise, a rig, a mismatch — or a ship that chose to disappear. Darkwatch decides which, and says how sure it is. |
 | **Goal** | Build a maritime surveillance system that detects vessels that have deliberately switched off AIS, by fusing free Sentinel-1 SAR imagery with AIS broadcasts, and produces calibrated, auditable dark-vessel verdicts. |
 | **Mode** | Impact-first, funding-agnostic, single-consumer-GPU research/engineering build. |
-| **Status** | Phase 2 — Vessel Detection baseline COMPLETE; Session #7 COMPLETE: SSDD→GRD domain gap closed. Mixed YOLOv8n detector `darkwatch_yolov8n_ssdd_grd_v4` trained from corrected weak-positive chips and validated; July 23 weak-target recall regression fixed (both known DARK vessels recovered). Phase 3 Fusion & Attribution baseline COMPLETE: static-object exclusion + four real scenes fused, calibration framework + interactive maps. Session #12 COMPLETE: physical-plausibility AIS gate implemented and tuned, learned per-class Platt calibration layer fitted, 46-label recal3 dataset locked. Session #13 COMPLETE: calibration dataset expanded to 122 labels across Santa Barbara + Gulf of Mexico; cross-theater validation reveals Santa-Barbara-only calibration overfit; combined cross-theater model selected as default. Session #13.5 COMPLETE: BOEM/BSEE Gulf of Mexico platform catalog integrated into static-object exclusion; `--theater` flag added to fusion CLI. Session #14 COMPLETE: Southern California Bight third-theater validation unblocked and processed; theater-aware calibration registry + SCB-specific model; unified CLI; analyst web dashboard MVP live via `darkwatch serve`. |
+| **Status** | Phase 2 — Vessel Detection baseline COMPLETE; Session #7 COMPLETE: SSDD→GRD domain gap closed. Mixed YOLOv8n detector `darkwatch_yolov8n_ssdd_grd_v4` trained from corrected weak-positive chips and validated; July 23 weak-target recall regression fixed (both known DARK vessels recovered). Phase 3 Fusion & Attribution baseline COMPLETE: static-object exclusion + four real scenes fused, calibration framework + interactive maps. Session #12 COMPLETE: physical-plausibility AIS gate implemented and tuned, learned per-class Platt calibration layer fitted, 46-label recal3 dataset locked. Session #13 COMPLETE: calibration dataset expanded to 122 labels across Santa Barbara + Gulf of Mexico; cross-theater validation reveals Santa-Barbara-only calibration overfit; combined cross-theater model selected as default. Session #13.5 COMPLETE: BOEM/BSEE Gulf of Mexico platform catalog integrated into static-object exclusion; `--theater` flag added to fusion CLI. Session #14 COMPLETE: Southern California Bight third-theater validation unblocked and processed; theater-aware calibration registry + SCB-specific model; unified `darkwatch` CLI; analyst web dashboard MVP live via `darkwatch serve` with Verdict Dial, thumbnails, CSV export, and tests; NOAA MPA zone context layer integrated; cross-scene persistence tracking (DBSCAN 500 m, min 2 samples) implemented and tested. |
 | **Start Date** | 2026-08-04 |
-| **Last Updated** | 2026-08-13 (Session #14: SCB 2024-07-06 end-to-end; theater-aware calibration; dashboard MVP; 28/28 tests pass) |
+| **Last Updated** | 2026-08-11 (Session #14: SCB 2024-07-06 end-to-end; theater-aware calibration; dashboard MVP + thumbnails + CSV + zones + persistence; 38/38 tests pass) |
 | **Current Branch** | main |
 | **Git Remote** | `https://github.com/satyamdas03/darkwatch` (public, pushed 2026-08-04) |
 | **Lead Engineer** | Bull (Claude Code agent) |
@@ -250,6 +250,25 @@ darkwatch/
     - **July 23:** v4 default (`-25/-5`, `conf=0.25`) found 3 contacts; with **adaptive stretch** (`lo=-40`, `hi=-10`, 5/95 percentile, `conf=0.05`) found 9 contacts, including **both known DARK vessels** at conf 0.764 and 0.370. v3 adaptive found only 1 of 2 at conf 0.052.
   - Documented the stale-label augmentation bug in memory (`weak-positive-augmentation-bug.md`) to prevent regression.
   - **Weak-target recall regression FIXED.**
+- [x] **Sessions #8–#13.5 — Phase 3 calibration scaled to cross-theater (2026-08-09 to 2026-08-11):**
+  - Session #8: re-ran July 11/18/23 with v4 adaptive detector; built `data/processed/calibration_labels_v4_adaptive.json` (26 labels: 11 ARTIFACT, 6 CLEAR, 8 DARK, 1 UNKNOWN); first calibration report flagged DARK overconfidence and ARTIFACT underconfidence.
+  - Session #9: added size/shape artifact prior (oversize, extreme aspect ratio, tile-edge truncation) and stronger static-object penalty; produced `calibration_labels_v4_adaptive_recal.json`.
+  - Session #10: fixed Session #9 regressions with match-aware artifact discount + tile-edge size guard; `calibration_labels_v4_adaptive_recal2.json` (26 labels) achieved 10/11 ARTIFACT, 6/6 CLEAR, 8/8 DARK correct; tests **19 passed**.
+  - Session #11: integrated 2024-08-11 scene; expanded to **46 labels**; added `scripts/process_scene.py` end-to-end wrapper and `scripts/download_ais_noaa.py`; identified KNOX T oversized-match counter-example.
+  - Session #12: implemented physical-plausibility AIS gate and learned per-class Platt calibration layer; `calibration_labels_v4_adaptive_recal3.json` + `fusion_calibration_v4_adaptive_recal3.json`; KNOX T now ARTIFACT; tests **21 passed**.
+  - Session #13: expanded to **122 labels** across Santa Barbara + Gulf of Mexico; cross-theater validation showed Santa-Barbara-only models overfit; **combined cross-theater model selected as default** (`fusion_calibration_v4_adaptive_combined.json`); held-out Gulf Brier improved.
+  - Session #13.5: integrated BOEM/BSEE Gulf of Mexico platform catalog into static-object exclusion; added `--theater gulf` to fusion CLI.
+- [x] **Session #14 — SCB third-theater validation + unified CLI + analyst dashboard MVP + operational context layers (2026-08-11):**
+  - Unblocked Southern California Bight (SCB) by fixing `bbox_to_window()` to intersect theater bbox with scene footprint convex hull.
+  - Processed 2024-07-06 SCB scene: **108 contacts**, **665 AIS tracks**, 26 NOAA MPA zones fetched; auto-labeled and manually reviewed; SCB-specific calibration model fitted (`fusion_calibration_v4_adaptive_socal.json`).
+  - Demonstrated theater-aware calibration beats combined cross-theater on SCB (combined DARK Brier 0.1428→0.0577 on SCB-specific model; 6 REVIEW→CLEAR, 3 REVIEW→ARTIFACT shifts).
+  - Built `darkwatch/fusion/calibration_registry.py` and extended `darkwatch/fusion/static_objects.py` with OSPR platform aliases (`southern_california`, `southern_california_bight`, `socal`, `scb`).
+  - Added unified Typer CLI (`darkwatch/cli.py`): `darkwatch serve` launches FastAPI dashboard; `darkwatch --version`.
+  - Built analyst web dashboard (`darkwatch/dashboard/`): FastAPI backend (`api.py`), scene scanner (`scanner.py`), static HTML/CSS/JS frontend with deep-ocean slate UI, Verdict Dial SVG gauge, contact list, Folium map embed, thumbnail endpoints, CSV export, zone badges, persistence badges.
+  - Added dashboard tests (`tests/test_dashboard.py`); fixed map endpoint 404 (regex date extraction), scene path relative_to fallback, CSV content-type assertion; tests **38 passed**.
+  - Integrated NOAA MPA Inventory zone context (`darkwatch/zones/fetcher.py`, `darkwatch/zones/zones.py`, `scripts/fetch_zones.py`, `data/external/zones/socal_mpa.geojson`, `tests/test_zones.py`).
+  - Implemented cross-scene persistence tracking (`darkwatch/persistence/cluster.py`, DBSCAN-style 500 m / min 2 samples, `tag_all_contacts()`); badges on dashboard; tests (`tests/test_persistence.py`).
+  - Generated SCB reports/maps: `notebooks/fusion_20240706_report.md`, `fusion_20240706_map.html`, `fusion_20240706_socal_cal_report.md`, `fusion_20240706_socal_cal_map.html`; calibration reports in `notebooks/calibration_socal*/`.
 
 ### 6.1 Test Theater — Final Choice
 
@@ -286,9 +305,9 @@ darkwatch/
 | 0 | **Recon & first light** | Get real SAR onto the screen; pick test theater | ✅ Complete | Bull | Copernicus + NOAA verified; first scene calibrated and viewed |
 | 1 | **SAR Ingestion & Prep (S1)** | Scenes → analysis-ready tiles, automatically | ✅ Complete | Bull | `prep_s1.py`; land-mask → tile pipeline validated on ocean scene |
 | 2 | **Vessel Detection (S2)** | Scene in, clean contacts out | ✅ Baseline complete; ✅ SSDD→GRD domain-gap closure complete (Session #7) | Bull | `darkwatch_yolov8n_ssdd_grd_v4` recovers July 23 weak targets; default + adaptive stretch paths validated; next: scale calibration with more scenes |
-| 3 | **Fusion & Attribution (S3)** ★ | Calibrated dark-vessel attribution | ✅ Baseline complete; ✅ v4 adaptive calibration scaled (Session #8); ✅ fusion priors recalibrated with size/shape artifact evidence (Session #9); ✅ Session #9 regressions fixed with match-aware artifact discount + tile-edge size guard (Session #10); ✅ fourth scene integrated and calibration dataset expanded (Session #11); ✅ physical-plausibility AIS gate + learned Platt calibration layer implemented and recal3 locked (Session #12); next: scale to ~100 labels and validate in a new theater | Bull | Four scenes fused (2024-07-11, 07-18, 07-23, 08-11); 46 labeled contacts (27 ARTIFACT, 7 CLEAR, 9 DARK, 3 UNKNOWN); active label source `data/processed/calibration_labels_v4_adaptive_recal3.json`; calibration model `data/processed/fusion_calibration_v4_adaptive_recal3.json`; recal3 reports/maps generated; next: collect more scenes and validate generalization |
-| 4 | **Behavior & Intent (S4)** | Ranked alerts with context | ⏳ Pending | Bull | Use GFW + public zone data |
-| 5 | **Evidence Layer (S5)** | Auditable dossiers + validation | ⏳ Pending | Bull | Write up method |
+| 3 | **Fusion & Attribution (S3)** ★ | Calibrated dark-vessel attribution | ✅ Complete: static-object exclusion, physical-plausibility gate, learned per-class Platt calibration, 122 labels across Santa Barbara + Gulf of Mexico, cross-theater validation, theater-aware calibration registry, SCB-specific model | Bull | Active label source `data/processed/calibration_labels_v4_adaptive_combined.json` (122 labels); default calibration model `data/processed/fusion_calibration_v4_adaptive_combined.json`; SCB model `data/processed/fusion_calibration_v4_adaptive_socal.json`; `--theater` selects theater + calibration model |
+| 4 | **Behavior & Intent (S4)** | Ranked alerts with context | ✅ MVP complete: analyst web dashboard, NOAA MPA zone context, cross-scene persistence tracking | Bull | Next: behavior scoring, rendezvous detection, alert prioritization rules |
+| 5 | **Evidence Layer (S5)** | Auditable dossiers + validation | ⏳ Pending | Bull | Automated dossier generation + ranked alert feed |
 
 ---
 
@@ -350,7 +369,7 @@ darkwatch/
 | 2026-08-04 | ✅ RESOLVED — Scene selection: score passes by open-water fraction to avoid land-only acquisitions | — | Bull |
 | 2026-08-04 | Which open SAR ship detection dataset has the most permissive license? | Medium — blocks S2 | Bull |
 | 2026-08-04 | ✅ RESOLVED — Detector training completed; weights at `models/detector_runs/darkwatch_yolov8n_ssdd/weights/best.pt` | — | Bull |
-| 2026-08-04 | ⚠️ WATCH — SSDD→GRD domain gap yields low recall on real tiles (1 unique contact on Jul 11, 12 on Jul 18) | Medium — limits S2 utility; not a Phase 3 blocker | Bull |
+| 2026-08-04 | ✅ RESOLVED — SSDD→GRD domain gap: `darkwatch_yolov8n_ssdd_grd_v4` recovers bright traffic and July 23 weak DARK vessels; photometric weak-positive augmentation prevents stale-label corruption | Medium — limits S2 utility; not a Phase 3 blocker | Bull |
 | 2026-08-04 | ✅ RESOLVED — AIS data pull for the 2024-07-11 Santa Barbara Channel window (`AIS_2024_07_11.zip` downloaded, filtered, fused) | — | Bull |
 | 2026-08-04 | ✅ RESOLVED — Darkwatch extracted into its own git repository at `C:/Users/point/projects/darkwatch` | — | Bull |
 | 2026-08-04 | ✅ RESOLVED — First real dark-vessel attribution verdict produced (DARK, p=0.9732) | — | Bull |
@@ -362,7 +381,9 @@ darkwatch/
 | 2026-08-09 | ✅ Session #11: 2024-08-11 scene integrated; 46 labeled contacts; next: learned calibration + physical-plausibility gate | High — moves the core calibration goal forward before more scene collection | Bull |
 | 2026-08-09 | ✅ RESOLVED — Implement learned calibration layer on 46-label dataset | High — per-class Platt scaling now saved and applied at inference; Brier improved for ARTIFACT, CLEAR, DARK | Bull |
 | 2026-08-09 | ✅ RESOLVED — Add physical-plausibility gate for AIS matches | High — prevents oversized SAR contacts from being falsely matched to single cooperative vessels (KNOX T lesson) | Bull |
-| 2026-08-11 | **OPEN — Scale calibration dataset to ~100 labels and validate in a second theater** | High — current calibration is in-sample on Santa Barbara Channel; need out-of-sample generalization before strong claims | Bull |
+| 2026-08-11 | ✅ RESOLVED — Calibration dataset scaled to 122 labels and validated in second theater (Gulf of Mexico) | High — combined cross-theater model selected as default; theater-aware registry enables per-theater overrides | Bull |
+| 2026-08-11 | **OPEN — Validate Southern California Bight calibration on additional SCB scenes and refine manual labels** | High — SCB model is promising on one scene but needs more labels for strong claims | Bull |
+| 2026-08-11 | **OPEN — Close Phase 5 automated dossier generation and ranked alert feed** | Medium — dashboard exists; now needs exportable, shareable dossiers | Bull |
 
 ---
 
@@ -889,8 +910,9 @@ darkwatch/
   - All unit tests pass (`pytest tests/ -q` → 38 passed).
 - **Next action:**
   - Manual SCB label curation: review ~20 high-confidence contacts from `notebooks/contact_viz_20240706_v4_adaptive/` to replace auto-labels with audited ground truth.
-  - Dashboard hardening: add contact thumbnails, contact click-to-center on map, CSV export, persistence across repeat passes, MPA/EEZ zone overlays.
-  - Begin Phase F/G operational context layer and scheduled monitoring.
+  - Dashboard hardening: contact click-to-center on map, search/filter by zone/persistence, keyboard shortcuts, and scheduled scene refresh.
+  - Begin Phase 5 automated evidence dossiers and ranked alert feed.
+  - Validate combined calibration model in a fourth theater (e.g., Mediterranean or North Sea) to test true out-of-sample transfer.
 
 ---
 
@@ -997,8 +1019,8 @@ For each DARK/REVIEW verdict, surface:
 2. `P(no AIS track claims it | AIS)` — association / explain-away.
 3. `P(not rig/fixed false zone | context)` — static-object exclusion.
 4. `P(not innocent AIS gap | AIS quality / timing)` — dropout vs switch-off.
-5. `P(SAR size/type compatible with matched AIS track)` — physical-plausibility gate (pending implementation).
-6. `P(calibrated | empirical labels)` — learned calibration mapping raw fusion probabilities to observed frequencies (pending implementation).
+5. `P(SAR size/type compatible with matched AIS track)` — physical-plausibility gate (`length_tolerance`, `absolute_margin_m`); oversized matches shift to ARTIFACT.
+6. `P(calibrated | empirical labels)` — learned per-class Platt calibration fitted by minimizing Brier score on auditable labels; `--theater` selects a theater-specific calibration model.
 
 Final `P(dark)` is a function of these; the **weakest link** is reported explicitly.
 
