@@ -262,6 +262,7 @@ Darkwatch is built to be **honest about uncertainty**, not just confident.
 - **`scripts/visualize_fusion.py`** creates interactive Folium maps with SAR contacts, AIS tracks, oil-platform markers, and 2 km gate circles.
 - **`scripts/download_ais_noaa.py`** downloads NOAA daily AIS zip files with resume support.
 - **`scripts/process_scene.py`** is an end-to-end wrapper: S1 download → prep tiles → detect → fetch AIS → fuse → report + map.
+- **`scripts/fetch_zones.py`** downloads MPA / maritime zone GeoJSON for a bbox from the NOAA MPA Inventory.
 - **`darkwatch serve`** launches the analyst web dashboard on `http://127.0.0.1:8050`.
 
 ### Launch the analyst dashboard
@@ -270,7 +271,7 @@ Darkwatch is built to be **honest about uncertainty**, not just confident.
 darkwatch serve
 ```
 
-The dashboard auto-discovers processed scenes under `data/processed`, ranks contacts by actionable verdict (DARK → REVIEW → CLEAR → ARTIFACT), embeds the generated Folium map, shows a SAR review-grid thumbnail on each alert card, and offers a one-click **Export CSV** of all verdicts. The right-side evidence panel displays contact geometry, AIS context, static-object hits, and the full reasoning trail.
+The dashboard auto-discovers processed scenes under `data/processed`, ranks contacts by actionable verdict (DARK → REVIEW → CLEAR → ARTIFACT), embeds the generated Folium map, shows a SAR review-grid thumbnail on each alert card, offers a one-click **Export CSV**, and displays MPA/zone overlap in the evidence panel when zone GeoJSON is present under `data/external/zones/`. The right-side evidence panel also shows contact geometry, AIS context, static-object hits, and the full reasoning trail.
 
 Latest combined calibration metrics (122 labels, in-sample after gate + calibration):
 

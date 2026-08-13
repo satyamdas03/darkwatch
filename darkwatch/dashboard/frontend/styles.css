@@ -382,6 +382,28 @@ a.filter-pill {
   line-height: 1.5;
 }
 
+.zone-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 0.85rem;
+}
+
+.zone-list li {
+  padding: 0.35rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.zone-list li:last-child {
+  border-bottom: none;
+}
+
+.zone-meta {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  margin-left: 0.5rem;
+}
+
 .prob-bars {
   display: grid;
   gap: 0.4rem;

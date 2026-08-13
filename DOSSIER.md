@@ -863,7 +863,13 @@ darkwatch/
   - Updated `scripts/fuse_contacts.py` and `scripts/process_scene.py` so `--theater` auto-selects the right default calibration model; explicit `--calibration-model` still overrides.
   - Fitted `data/processed/fusion_calibration_v4_adaptive_socal.json` on 108 SCB labels (Platt params: artifact scale=0.978/shift=-0.189, clear scale=1.175/shift=0.258, dark scale=1.163/shift=-0.232, review scale=1.148/shift=-0.095).
   - Re-fused 2024-07-06 with theater-aware SCB calibration: CLEAR 61 / ARTIFACT 28 / DARK 15 / REVIEW 4 (6 REVIEW → CLEAR, 3 REVIEW → ARTIFACT vs raw).
-- **Completed (Phase D — analyst web dashboard MVP):**
+- **Completed (Phase F — operational context layer started):**
+  - Added `darkwatch/zones/` package: `fetcher.py` queries NOAA MPA Inventory ArcGIS REST, `zones.py` loads GeoJSON and performs point-in-polygon lookups, `tag_contacts()` enriches contacts with overlapping zones.
+  - Added `scripts/fetch_zones.py` to download MPA GeoJSON for any bbox.
+  - Fetched `data/external/zones/socal_mpa.geojson` for the SCB bbox (26 MPA features).
+  - Dashboard scanner now auto-loads all `data/external/zones/*.geojson` files and tags contacts; evidence panel shows overlapping zones with protection level.
+  - Added `tests/test_zones.py` (5 tests).
+- **Completed (Phase D — analyst web dashboard MVP):
   - Added `darkwatch/dashboard/` package with FastAPI backend (`api.py`, `scanner.py`) and static frontend (`frontend/index.html`, `styles.css`, `app.js`).
   - Backend scans `data/processed` for `verdicts.json` + `summary.json`, serves scene list, scene detail, embedded Folium maps, contact review-grid thumbnails, and CSV export.
   - Frontend: deep-ocean slate palette (#0B1B2B), warning amber DARK, clear green CLEAR, gray ARTIFACT, blue REVIEW, Saira Condensed headers, Inter body, JetBrains Mono data.
@@ -875,7 +881,7 @@ darkwatch/
 - **Completed (Phase E — unified CLI):**
   - Added `darkwatch/cli.py` with Typer subcommands: `search-scenes`, `process-scene`, `build-labels`, `fit-calibration`, `evaluate`, `serve`.
   - Registered `darkwatch` console entry point in `pyproject.toml`.
-  - All unit tests pass (`pytest tests/ -q` → 30 passed).
+  - All unit tests pass (`pytest tests/ -q` → 35 passed).
 - **Next action:**
   - Manual SCB label curation: review ~20 high-confidence contacts from `notebooks/contact_viz_20240706_v4_adaptive/` to replace auto-labels with audited ground truth.
   - Dashboard hardening: add contact thumbnails, contact click-to-center on map, CSV export, persistence across repeat passes, MPA/EEZ zone overlays.

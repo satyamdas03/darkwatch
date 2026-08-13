@@ -13,8 +13,39 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_DATA_DIR = REPO_ROOT / "data" / "processed"
+DEFAULT_ZONES_DIR = REPO_ROOT / "data" / "external" / "zones"
+
+
+def load_zone_catalog(zones_dir: Path = DEFAULT_ZONES_DIR) -> Any:
+    """Load all GeoJSON zone files found under *zones_dir*.
+
+    Returns a ``ZoneCatalog`` if zones are available, otherwise ``None``.
+    """
+    if not zones_dir.exists():
+        return None
+    try:
+        from darkwatch.zones.zones import ZoneCatalog
+    except Exception:
+        return None
+
+    import geopandas as gpd
+
+    parts = []
+    for path in sorted(zones_dir.glob("*.geojson")):
+        try:
+            parts.append(gpd.read_file(path))
+        except Exception:
+            continue
+    if not parts:
+        return None
+    gdf = gpd.GeoDataFrame(pd.concat(parts, ignore_index=True))
+    if gdf.crs is None:
+        gdf.set_crs(epsg=4326, inplace=True)
+    return ZoneCatalog(gdf)
 
 
 @dataclass
@@ -108,6 +139,8 @@ def scan_scenes(data_dir: Path = DEFAULT_DATA_DIR) -> list[Scene]:
     if not data_dir.exists():
         return scenes
 
+    zone_catalog = load_zone_catalog()
+
     for entry in sorted(data_dir.iterdir()):
         if not entry.is_dir():
             continue
@@ -129,6 +162,11 @@ def scan_scenes(data_dir: Path = DEFAULT_DATA_DIR) -> list[Scene]:
                 )
                 if detections_dir.exists():
                     scene.contacts = _load_json(detections_dir / "contacts.json") or []
+
+        if zone_catalog is not None and scene.contacts:
+            from darkwatch.zones.zones import tag_contacts
+
+            scene.contacts = tag_contacts(zone_catalog, scene.contacts)
 
         map_path = _find_map_html(entry, entry.name)
         if map_path:

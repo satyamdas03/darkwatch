@@ -154,6 +154,7 @@ function renderEvidencePanel(v, contact) {
   const assocMmsi = assoc?.mmsi ? escapeHtml(assoc.mmsi) : "—";
   const staticName = staticObj?.name ? escapeHtml(staticObj.name) : "—";
   const reason = escapeHtml(v.reasoning || "No reasoning recorded.");
+  const zones = contact?.zones || [];
 
   panel.innerHTML = `
     <div class="evidence">
@@ -227,6 +228,15 @@ function renderEvidencePanel(v, contact) {
              </div>`
           : ""
       }
+
+      <div class="evidence-section">
+        <h4>Zones</h4>
+        ${
+          zones.length
+            ? `<ul class="zone-list">${zones.map((z) => `<li>${escapeHtml(z.name || z.site_id || "Unnamed zone")} <span class="zone-meta">${escapeHtml(z.protection_level || "")}</span></li>`).join("")}</ul>`
+            : `<div class="reasoning">No known MPA / EEZ / zone overlap.</div>`
+        }
+      </div>
 
       <div class="evidence-section">
         <h4>Reasoning</h4>
