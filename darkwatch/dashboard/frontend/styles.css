@@ -404,6 +404,18 @@ a.filter-pill {
   margin-left: 0.5rem;
 }
 
+.persist-badge {
+  background: var(--dark);
+  color: var(--bg);
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.25rem;
+  margin-top: 0.25rem;
+}
+
 .prob-bars {
   display: grid;
   gap: 0.4rem;

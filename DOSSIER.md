@@ -869,7 +869,12 @@ darkwatch/
   - Fetched `data/external/zones/socal_mpa.geojson` for the SCB bbox (26 MPA features).
   - Dashboard scanner now auto-loads all `data/external/zones/*.geojson` files and tags contacts; evidence panel shows overlapping zones with protection level.
   - Added `tests/test_zones.py` (5 tests).
-- **Completed (Phase D — analyst web dashboard MVP):
+- **Completed (Phase F extension — persistence tracking):**
+  - Added `darkwatch/persistence/` package: DBSCAN-style clustering on contact lat/lon across all processed scenes, 500 m eps, min 2 samples.
+  - Contacts are tagged with `persistence` metadata: `cluster_id`, `n_scenes`, `cluster_size`, `is_persistent`.
+  - Dashboard alert cards show a "Persistent (N scenes)" badge for cross-scene clusters; evidence panel explains persistence.
+  - Added `tests/test_persistence.py` (3 tests).
+- **Completed (Phase D — analyst web dashboard MVP):**
   - Added `darkwatch/dashboard/` package with FastAPI backend (`api.py`, `scanner.py`) and static frontend (`frontend/index.html`, `styles.css`, `app.js`).
   - Backend scans `data/processed` for `verdicts.json` + `summary.json`, serves scene list, scene detail, embedded Folium maps, contact review-grid thumbnails, and CSV export.
   - Frontend: deep-ocean slate palette (#0B1B2B), warning amber DARK, clear green CLEAR, gray ARTIFACT, blue REVIEW, Saira Condensed headers, Inter body, JetBrains Mono data.
@@ -881,7 +886,7 @@ darkwatch/
 - **Completed (Phase E — unified CLI):**
   - Added `darkwatch/cli.py` with Typer subcommands: `search-scenes`, `process-scene`, `build-labels`, `fit-calibration`, `evaluate`, `serve`.
   - Registered `darkwatch` console entry point in `pyproject.toml`.
-  - All unit tests pass (`pytest tests/ -q` → 35 passed).
+  - All unit tests pass (`pytest tests/ -q` → 38 passed).
 - **Next action:**
   - Manual SCB label curation: review ~20 high-confidence contacts from `notebooks/contact_viz_20240706_v4_adaptive/` to replace auto-labels with audited ground truth.
   - Dashboard hardening: add contact thumbnails, contact click-to-center on map, CSV export, persistence across repeat passes, MPA/EEZ zone overlays.

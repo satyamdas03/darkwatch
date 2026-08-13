@@ -175,7 +175,49 @@ def scan_scenes(data_dir: Path = DEFAULT_DATA_DIR) -> list[Scene]:
         scene.processing_state = _load_json(entry / "processing_state.json")
         scenes.append(scene)
 
+    # Attach cross-scene persistence metadata.
+    _attach_persistence(scenes)
+
     return scenes
+
+
+def _scene_date_from_id(scene_id: str) -> str | None:
+    m = re.search(r"(\d{8})", scene_id)
+    return m.group(1) if m else None
+
+
+def _attach_persistence(scenes: list[Scene], eps_m: float = 500.0) -> None:
+    """Cluster contacts across all scenes and attach persistence metadata."""
+    if len(scenes) < 2:
+        for scene in scenes:
+            for c in scene.contacts:
+                c["persistence"] = {"cluster_id": None, "n_scenes": 1, "is_persistent": False}
+        return
+
+    flat: list[dict[str, Any]] = []
+    mapping: list[tuple[int, int]] = []  # (scene_idx, contact_idx)
+    for si, scene in enumerate(scenes):
+        date = _scene_date_from_id(scene.scene_id)
+        for ci, c in enumerate(scene.contacts):
+            c_copy = dict(c)
+            c_copy["scene_date"] = date
+            c_copy["__scene_id"] = scene.scene_id
+            flat.append(c_copy)
+            mapping.append((si, ci))
+
+    try:
+        from darkwatch.persistence.cluster import tag_all_contacts
+
+        tagged = tag_all_contacts(flat, eps_m=eps_m, min_samples=2)
+    except Exception:
+        tagged = flat
+
+    for (si, ci), t in zip(mapping, tagged):
+        persistence = dict(t.get("persistence", {}))
+        # Remove internal keys from persistence metadata.
+        persistence.pop("scene_date", None)
+        persistence.pop("__scene_id", None)
+        scenes[si].contacts[ci]["persistence"] = persistence
 
 
 def find_scene(scene_id: str, data_dir: Path = DEFAULT_DATA_DIR) -> Scene | None:

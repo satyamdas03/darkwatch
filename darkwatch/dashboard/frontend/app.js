@@ -131,6 +131,7 @@ function renderAlertList(scene) {
           <span>AIS gate: ${v.n_tracks_within_gate || 0}</span>
           <span>p dark: ${(v.p_dark * 100).toFixed(0)}%</span>
           <span>${staticName}</span>
+          ${c.persistence?.is_persistent ? `<span class="persist-badge">Persistent (${c.persistence.n_scenes} scenes)</span>` : ""}
         </div>
       </article>
     `;
@@ -228,6 +229,17 @@ function renderEvidencePanel(v, contact) {
              </div>`
           : ""
       }
+
+      <div class="evidence-section">
+        <h4>Persistence</h4>
+        ${
+          contact?.persistence?.is_persistent
+            ? `<div class="reasoning">
+                 ⭐ Persistent contact: seen in ${contact.persistence.n_scenes} scenes within a ${contact.persistence.cluster_size}-contact cluster.
+               </div>`
+            : `<div class="reasoning">Single-scene sighting; no repeat detections within 500 m in other processed scenes.</div>`
+        }
+      </div>
 
       <div class="evidence-section">
         <h4>Zones</h4>
